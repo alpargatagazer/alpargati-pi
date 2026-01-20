@@ -1,0 +1,65 @@
+services:
+
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    labels:
+      - 'wud.tag.include=latest'
+      - 'wud.watch.digest=true'
+    environment:
+      TZ: ${TZ}
+      # Read admin token from secret file
+      ADMIN_TOKEN_FILE: /run/secrets/vaultwarden_admin_token
+      # Security settings
+      SIGNUPS_ALLOWED: "false"
+      INVITATIONS_ALLOWED: "true"
+      SHOW_PASSWORD_HINT: "false"
+      # Websocket for live sync
+      WEBSOCKET_ENABLED: "true"
+    secrets:
+      - vaultwarden_admin_token
+    volumes:
+      - ${VOLUMES_PATH}/vaultwarden:/data
+    networks:
+      - frontend
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--timeout=3", "-O", "-", "http://127.0.0.1:80/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  adguardhome:
+    image: adguard/adguardhome:latest
+    container_name: adguardhome
+    labels:
+      - 'wud.tag.include=latest'
+      - 'wud.watch.digest=true'
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ${VOLUMES_PATH}/adguardhome/work:/opt/adguardhome/work
+      - ${VOLUMES_PATH}/adguardhome/conf:/opt/adguardhome/conf
+    ports:
+      # DNS ports - must be exposed to the host for network DNS
+      - "53:53/tcp"
+      - "53:53/udp"
+      # Setup wizard and dashboard
+      - "3000:3000/tcp"
+      # DHCP (optional, uncomment if needed)
+      # - "67:67/udp"
+      # - "68:68/udp"
+    networks:
+      - frontend
+    restart: unless-stopped
+    # cap_add required for binding to privileged ports
+    cap_add:
+      - NET_ADMIN
+
+secrets:
+  vaultwarden_admin_token:
+    file: ${SECRETS_PATH}/vaultwarden_admin_token
+
+networks:
+  frontend:
+    name: alpargati-pi_frontend

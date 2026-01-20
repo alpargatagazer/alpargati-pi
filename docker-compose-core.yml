@@ -1,0 +1,60 @@
+services:
+
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    labels:
+      - 'wud.tag.include=latest'
+      - 'wud.watch.digest=true'
+    environment:
+      TZ: ${TZ}
+      PUID: ${PUID}
+      PGID: ${PGID}
+    volumes:
+      - ${VOLUMES_PATH}/homepage:/app/config
+      # Optional: Docker socket for widget integration
+      - ${DOCKER_SOCKET_PATH:-/var/run/docker.sock}:/var/run/docker.sock:ro
+    networks:
+      - frontend
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--timeout=3", "-O", "-", "http://127.0.0.1:3000/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  init-chown:
+    image: alpine:latest
+    container_name: init-chown
+    labels:
+      - 'wud.tag.include=latest'
+      - 'wud.watch.digest=true'
+    command: >
+      sh -euxc '
+        if [ -d /volumes ]; then
+          echo "Init: fixing ownership of /volumes to ${PUID:-1000}:${PGID:-1000}";
+          chown -R ${PUID:-1000}:${PGID:-1000} /volumes || true;
+        else
+          echo "Init: /volumes not found, skipping";
+        fi
+        if [ -d /data ]; then
+          echo "Init: fixing ownership of /data to ${PUID:-1000}:${PGID:-1000}";
+          chown -R ${PUID:-1000}:${PGID:-1000} /data || true;
+        else
+          echo "Init: /data not found, skipping";
+        fi
+      '
+    volumes:
+      - ${VOLUMES_PATH}:/volumes:rw
+      - ${DATA_PATH:-/tmp/fake_data}:/data:rw
+    networks:
+      - internal
+    restart: "no"
+
+networks:
+  internal:
+    name: alpargati-pi_internal
+  frontend:
+    name: alpargati-pi_frontend
+    driver_opts:
+      com.docker.network.driver.mtu: 1450

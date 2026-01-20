@@ -1,0 +1,41 @@
+## Global options
+{
+    # Disable HTTPS auto-redirect for local development
+    auto_https off
+}
+
+# Main homepage
+http://<domain>, http://home.<domain> {
+    reverse_proxy homepage:3000
+}
+
+# Vaultwarden - Password Manager (protected by its own auth + Caddy basic auth)
+http://vault.<domain> {
+    basicauth {
+        <caddy_auth_user> <caddy_auth_password_hash>
+    }
+    reverse_proxy vaultwarden:80
+}
+
+# AdGuard Home - DNS Admin Panel
+http://adguard.<domain> {
+    reverse_proxy adguardhome:3000
+}
+
+# FileBrowser - File Manager (protected by its own auth + Caddy basic auth)
+http://files.<domain> {
+    reverse_proxy filebrowser:8080
+}
+
+# Dozzle - Docker Log Viewer (protected by Caddy basic auth)
+http://logs.<domain> {
+    basicauth {
+        <caddy_auth_user> <caddy_auth_password_hash>
+    }
+    reverse_proxy dozzle:8080
+}
+
+# WUD - Container Update Manager (protected by its own auth)
+http://wud.<domain> {
+    reverse_proxy wud:2999
+}
