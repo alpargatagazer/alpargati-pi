@@ -18,47 +18,34 @@ services:
     networks:
       - frontend
     restart: unless-stopped
-    depends_on:
-      - init-chown
     healthcheck:
       test: [ "CMD", "wget", "--quiet", "--tries=1", "--timeout=3", "-O", "-", "http://127.0.0.1:3000/" ]
       interval: 30s
       timeout: 10s
       retries: 3
 
-  init-chown:
-    image: alpine:latest
-    container_name: init-chown
-    user: root
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: tailscale
+    profiles: [ "tailscale" ]
     labels:
       - 'wud.tag.include=latest'
       - 'wud.watch.digest=true'
-    command: >
-      sh -euxc '
-        if [ -d /volumes ]; then
-          echo "Init: fixing ownership of /volumes to ${PUID:-1000}:${PGID:-1000}";
-          chown -R ${PUID:-1000}:${PGID:-1000} /volumes || true;
-        else
-          echo "Init: /volumes not found, skipping";
-        fi
-        if [ -d /data ]; then
-          echo "Init: fixing ownership of /data to ${PUID:-1000}:${PGID:-1000}";
-          chown -R ${PUID:-1000}:${PGID:-1000} /data || true;
-        else
-          echo "Init: /data not found, skipping";
-        fi
-      '
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_HOSTNAME=alpargati-pi
+      - TS_USERSPACE=false
     volumes:
-      - ${VOLUMES_PATH}:/volumes:rw
-      - ${DATA_PATH:-/tmp/fake_data}:/data:rw
+      - ${VOLUMES_PATH}/tailscale:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
     networks:
-      - internal
-    restart: "no"
+      - frontend
+    restart: unless-stopped
 
 networks:
-  internal:
-    name: alpargati-pi_internal
   frontend:
     name: alpargati-pi_frontend
-    driver_opts:
-      com.docker.network.driver.mtu: 1450

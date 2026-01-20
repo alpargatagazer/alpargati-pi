@@ -1,0 +1,47 @@
+- Network:
+    - Homepage:
+        icon: homepage.png
+        href: http://home.{{DOMAIN}}
+        description: This dashboard
+
+    - AdGuard Home:
+        icon: adguard-home.png
+        href: http://adguard.{{DOMAIN}}
+        description: Network-wide ads & trackers blocking
+
+    - Tailscale:
+        icon: tailscale.png
+        href: https://login.tailscale.com/admin/machines
+        description: Secure VPN access
+
+- Applications:
+    - Vaultwarden:
+        icon: vaultwarden.png
+        href: https://vault.{{DOMAIN}}
+        description: Secure Password Manager
+
+    - SilverBullet:
+        icon: silverbullet.png
+        href: http://notes.{{DOMAIN}}
+        description: Extensible personal knowledge base
+
+    - Memos:
+        icon: memos.png
+        href: http://memos.{{DOMAIN}}
+        description: Lightweight note-taking
+
+- Infrastructure:
+    - FileBrowser:
+        icon: filebrowser.png
+        href: http://files.{{DOMAIN}}
+        description: Web-based file manager
+
+    - Dozzle:
+        icon: dozzle.png
+        href: http://logs.{{DOMAIN}}
+        description: Real-time Docker logs viewer
+
+    - Watch Your Docker:
+        icon: wud.png
+        href: http://wud.{{DOMAIN}}
+        description: Container update monitoring

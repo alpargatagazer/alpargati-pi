@@ -23,8 +23,6 @@ services:
     networks:
       - frontend
     restart: unless-stopped
-    depends_on:
-      - init-chown
     healthcheck:
       test: [ "CMD-SHELL", "/usr/bin/wget --spider --quiet http://localhost:80/health || exit 1" ]
       interval: 30s
@@ -55,11 +53,37 @@ services:
     networks:
       - frontend
     restart: unless-stopped
-    depends_on:
-      - init-chown
     # cap_add required for binding to privileged ports
     cap_add:
       - NET_ADMIN
+
+  silverbullet:
+    image: zefhemel/silverbullet:latest
+    container_name: silverbullet
+    labels:
+      - 'wud.tag.include=latest'
+      - 'wud.watch.digest=true'
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ${VOLUMES_PATH}/silverbullet:/space
+    networks:
+      - frontend
+    restart: unless-stopped
+
+  memos:
+    image: neosmemo/memos:stable
+    container_name: memos
+    labels:
+      - 'wud.tag.include=stable'
+      - 'wud.watch.digest=true'
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ${VOLUMES_PATH}/memos:/var/opt/memos
+    networks:
+      - frontend
+    restart: unless-stopped
 
 secrets:
   vaultwarden_admin_token:

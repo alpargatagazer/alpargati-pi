@@ -1,0 +1,15 @@
+- logo:
+    icon: https://raw.githubusercontent.com/gethomepage/homepage/main/public/icons/homepage.png
+- datetime:
+    text_size: xl
+    format:
+      timeStyle: short
+      dateStyle: long
+- search:
+    provider: google
+    focus: true
+    target: _blank
+- resources:
+    cpu: true
+    memory: true
+    disk: /app/config

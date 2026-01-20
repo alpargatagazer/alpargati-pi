@@ -107,6 +107,7 @@ MODE="up"
 ENABLE_WUD=1
 ENABLE_DOZZLE=1
 ENABLE_FILEBROWSER=1
+ENABLE_TAILSCALE=1
 
 usage() {
   cat <<EOF
@@ -120,6 +121,7 @@ Profile control (defaults: all enabled):
   --no-wud          : disable the "wud" profile
   --no-dozzle       : disable the "dozzle" profile
   --no-filebrowser  : disable the "filebrowser" profile
+  --no-tailscale    : disable the "tailscale" profile
 
 Examples:
   $(basename "$0")
@@ -135,6 +137,7 @@ while (( "$#" )); do
     --no-wud) ENABLE_WUD=0; shift ;;
     --no-dozzle) ENABLE_DOZZLE=0; shift ;;
     --no-filebrowser) ENABLE_FILEBROWSER=0; shift ;;
+    --no-tailscale) ENABLE_TAILSCALE=0; shift ;;
     -h|--help) usage; exit 0 ;;
     --) shift; break ;;
     -*) echo "Unknown option: $1" >&2; usage; exit 2 ;;
@@ -170,6 +173,15 @@ if [ -z "${CADDY_AUTH_USER:-}" ] || [ -z "${CADDY_AUTH_PASSWORD:-}" ]; then
   exit 3
 fi
 
+if [ -z "${TS_AUTHKEY:-}" ] && [ $ENABLE_TAILSCALE -eq 1 ]; then
+  warn "TS_AUTHKEY not set. Tailscale service will be disabled."
+  ENABLE_TAILSCALE=0
+fi
+
+if [ -z "${TS_DOMAIN:-}" ] && [ $ENABLE_TAILSCALE -eq 1 ]; then
+  warn "TS_DOMAIN not set. Tailscale URLs in Caddy might not work correctly."
+fi
+
 if [ -z "${VAULTWARDEN_ADMIN_TOKEN:-}" ]; then
   warn "VAULTWARDEN_ADMIN_TOKEN is not set. Admin panel will be disabled."
 elif [[ ! "$VAULTWARDEN_ADMIN_TOKEN" =~ ^\$argon2id\$ ]]; then
@@ -201,6 +213,7 @@ echo "Compose profiles (defaults: enabled):"
 printf "  - wud        : %s\n" "$( [[ $ENABLE_WUD -eq 1 ]] && echo "enabled" || echo "disabled" )"
 printf "  - dozzle     : %s\n" "$( [[ $ENABLE_DOZZLE -eq 1 ]] && echo "enabled" || echo "disabled" )"
 printf "  - filebrowser: %s\n" "$( [[ $ENABLE_FILEBROWSER -eq 1 ]] && echo "enabled" || echo "disabled" )"
+printf "  - tailscale  : %s\n" "$( [[ $ENABLE_TAILSCALE -eq 1 ]] && echo "enabled" || echo "disabled" )"
 
 echo "=========================================="
 echo
@@ -368,6 +381,7 @@ write_secret "caddy_auth_password_hash" "${CADDY_AUTH_PASSWORD_HASH:-}"
 write_secret "vaultwarden_admin_token" "${VAULTWARDEN_ADMIN_TOKEN:-}"
 write_secret "filebrowser_admin_password" "${FILEBROWSER_ADMIN_PASSWORD:-}"
 write_secret "wud_admin_password_hash" "${WUD_ADMIN_PASSWORD_HASH:-}"
+write_secret "ts_authkey" "${TS_AUTHKEY:-}"
 
 info "All secret files generated."
 
@@ -393,9 +407,10 @@ expand_vars_file() {
   # Build sed arguments for placeholders
   # Start with known placeholders
   sed_args=()
-  sed_args+=( -e "s|<domain>|\\\${DOMAIN}|g" )
-  sed_args+=( -e "s|<caddy_auth_user>|\\\${CADDY_AUTH_USER}|g" )
-  sed_args+=( -e "s|<caddy_auth_password_hash>|\\\${CADDY_AUTH_PASSWORD_HASH}|g" )
+  sed_args+=( -e "s|<domain>|\\\${DOMAIN}|g" -e "s|{{DOMAIN}}|\\\${DOMAIN}|g" )
+  sed_args+=( -e "s|<ts_domain>|\\\${TS_DOMAIN}|g" -e "s|{{TS_DOMAIN}}|\\\${TS_DOMAIN}|g" )
+  sed_args+=( -e "s|<caddy_auth_user>|\\\${CADDY_AUTH_USER}|g" -e "s|{{CADDY_AUTH_USER}}|\\\${CADDY_AUTH_USER}|g" )
+  sed_args+=( -e "s|<caddy_auth_password_hash>|\\\${CADDY_AUTH_PASSWORD_HASH}|g" -e "s|{{CADDY_AUTH_PASSWORD_HASH}}|\\\${CADDY_AUTH_PASSWORD_HASH}|g" )
 
   # Apply sed replacements in-place (create .bak then remove)
   sed -i.bak "${sed_args[@]}" "$tmp" && rm -f "${tmp}.bak" || true
@@ -426,6 +441,37 @@ if [[ -f "$CADDY_SRC" ]]; then
   fi
 else
   warn "configs/Caddyfile not found; skipping rendering."
+fi
+
+###############################################################################
+# Initialize Homepage Configuration
+###############################################################################
+HOMEPAGE_VOL_DIR="${VOLUMES_PATH}/homepage"
+HOMEPAGE_SRC_DIR="$SCRIPT_DIR/configs/homepage"
+
+if [[ -d "$HOMEPAGE_SRC_DIR" ]]; then
+  info "Initializing Homepage configuration in $HOMEPAGE_VOL_DIR..."
+  info "This will overwrite existing yaml files in the volume with templates from configs/homepage."
+  mkdir -p "$HOMEPAGE_VOL_DIR"
+  
+  for src_file in "$HOMEPAGE_SRC_DIR"/*.yaml; do
+    filename=$(basename "$src_file")
+    dst_file="$HOMEPAGE_VOL_DIR/$filename"
+    
+    # Render variables into the yaml files
+    if ! expand_vars_file "$src_file" "$dst_file"; then
+      warn "Failed to render $filename; copying original as fallback"
+      cp -a "$src_file" "$dst_file"
+    fi
+  done
+  
+  # Also copy icons if they exist
+  if [[ -d "$HOMEPAGE_SRC_DIR/icons" ]]; then
+    mkdir -p "$HOMEPAGE_VOL_DIR/icons"
+    cp -a "$HOMEPAGE_SRC_DIR/icons/." "$HOMEPAGE_VOL_DIR/icons/"
+  fi
+else
+  warn "configs/homepage not found; skipping initialization. Ensure you configure it manually."
 fi
 
 ###############################################################################
@@ -487,6 +533,9 @@ if [[ $SUPPORTS_PROFILE -eq 1 ]]; then
   if [[ $ENABLE_FILEBROWSER -eq 1 ]]; then
     PROFILE_ARGS+=( --profile filebrowser )
   fi
+  if [[ $ENABLE_TAILSCALE -eq 1 ]]; then
+    PROFILE_ARGS+=( --profile tailscale )
+  fi
 fi
 
 ###############################################################################
@@ -499,6 +548,7 @@ unset VAULTWARDEN_ADMIN_TOKEN
 unset WUD_ADMIN_PASSWORD
 unset WUD_ADMIN_PASSWORD_HASH
 unset FILEBROWSER_ADMIN_PASSWORD
+unset TS_AUTHKEY
 
 ###############################################################################
 # Run compose

@@ -1,0 +1,19 @@
+title: Alpargati-Pi Dashboard
+base: http://home.{{DOMAIN}}
+background:
+  image: https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=2070
+  opacity: 50
+  blur: 5
+cardBlur: 10
+theme: dark
+fontFamily: Inter, sans-serif
+layout:
+  Infrastructure:
+    style: row
+    columns: 3
+  Applications:
+    style: row
+    columns: 3
+  Network:
+    style: row
+    columns: 3

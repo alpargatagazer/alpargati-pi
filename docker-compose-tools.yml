@@ -23,8 +23,6 @@ services:
     networks:
       - frontend
     restart: unless-stopped
-    depends_on:
-      - init-chown
     healthcheck:
       test: [ "CMD", "wget", "--quiet", "--tries=1", "--timeout=3", "-O", "-", "http://127.0.0.1:8080/" ]
       interval: 1m
