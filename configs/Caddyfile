@@ -4,13 +4,21 @@
     auto_https off
 }
 
+# Snippet for internal access restriction (Local LAN + Tailscale)
+(internal_only) {
+    @not_internal not remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8 127.0.0.1/8 ::1 100.64.0.0/10
+    respond @not_internal "Access denied" 403
+}
+
 # Main homepage
-http://<domain>, http://home.<domain> {
+http://<domain>, http://home.<domain>, http://pi.home {
+    import internal_only
     reverse_proxy homepage:3000
 }
 
 # Vaultwarden - Password Manager (protected by its own auth + Caddy basic auth)
 http://vault.<domain> {
+    import internal_only
     basicauth {
         <caddy_auth_user> <caddy_auth_password_hash>
     }
@@ -19,16 +27,19 @@ http://vault.<domain> {
 
 # AdGuard Home - DNS Admin Panel
 http://adguard.<domain> {
+    import internal_only
     reverse_proxy adguardhome:3000
 }
 
 # FileBrowser - File Manager (protected by its own auth + Caddy basic auth)
 http://files.<domain> {
+    import internal_only
     reverse_proxy filebrowser:8080
 }
 
 # Dozzle - Docker Log Viewer (protected by Caddy basic auth)
 http://logs.<domain> {
+    import internal_only
     basicauth {
         <caddy_auth_user> <caddy_auth_password_hash>
     }
@@ -37,5 +48,6 @@ http://logs.<domain> {
 
 # WUD - Container Update Manager (protected by its own auth)
 http://wud.<domain> {
+    import internal_only
     reverse_proxy wud:2999
 }

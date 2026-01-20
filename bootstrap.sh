@@ -172,6 +172,9 @@ fi
 
 if [ -z "${VAULTWARDEN_ADMIN_TOKEN:-}" ]; then
   warn "VAULTWARDEN_ADMIN_TOKEN is not set. Admin panel will be disabled."
+elif [[ ! "$VAULTWARDEN_ADMIN_TOKEN" =~ ^\$argon2id\$ ]]; then
+  warn "VAULTWARDEN_ADMIN_TOKEN is in plain text. Vaultwarden recommends Argon2 hashing."
+  info "You can generate a hash with: docker run --rm -it vaultwarden/server /vaultwarden hash"
 fi
 
 if [ -z "${WUD_ADMIN_USER:-}" ] || [ -z "${WUD_ADMIN_PASSWORD:-}" ] && [ $ENABLE_WUD -eq 1 ]; then
@@ -241,31 +244,32 @@ PGID="$(id -g)"
 export PUID PGID
 export CONTAINER_ENTRYPOINT_PATH="/entrypoint.sh"
 
-# Detect Docker socket for Rootless mode
-DOCKER_SOCKET_PATH="/var/run/docker.sock"
-if [[ -S "$DOCKER_SOCKET_PATH" ]]; then
-  info "Using standard Docker socket: $DOCKER_SOCKET_PATH"
-else
-  # Check common Rootless locations
-  POSSIBLE_SOCKETS=(
-    "/run/user/${PUID}/docker.sock"
-    "${XDG_RUNTIME_DIR:-/run/user/${PUID}}/docker.sock"
-    "$HOME/.docker/run/docker.sock"
-  )
+# Detect Docker socket
+# Prioritize Rootless sockets to ensure we use the user daemon if available
+POSSIBLE_SOCKETS=(
+  "/run/user/${PUID}/docker.sock"
+  "${XDG_RUNTIME_DIR:-/run/user/${PUID}}/docker.sock"
+  "$HOME/.docker/run/docker.sock"
+  "/var/run/docker.sock"
+)
 
-  for socket in "${POSSIBLE_SOCKETS[@]}"; do
-    if [[ -S "$socket" ]]; then
-      DOCKER_SOCKET_PATH="$socket"
+DOCKER_SOCKET_PATH=""
+for socket in "${POSSIBLE_SOCKETS[@]}"; do
+  if [[ -S "$socket" ]]; then
+    DOCKER_SOCKET_PATH="$socket"
+    if [[ "$socket" == "/var/run/docker.sock" ]]; then
+      info "Using standard (Root) Docker socket: $DOCKER_SOCKET_PATH"
+    else
       info "Detected Rootless Docker socket: $DOCKER_SOCKET_PATH"
-      break
     fi
-  done
-
-  if [[ "$DOCKER_SOCKET_PATH" == "/var/run/docker.sock" ]]; then
-    warn "Docker socket NOT found at standard or Rootless locations."
-    # Fallback to the most likely Rootless path
-    DOCKER_SOCKET_PATH="/run/user/${PUID}/docker.sock"
+    break
   fi
+done
+
+if [[ -z "$DOCKER_SOCKET_PATH" ]]; then
+  warn "Docker socket NOT found at standard or Rootless locations."
+  # Final fallback to standard root socket as a guess
+  DOCKER_SOCKET_PATH="/var/run/docker.sock"
 fi
 
 # Ensure DOCKER_HOST is set for compose and containers

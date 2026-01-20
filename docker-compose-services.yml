@@ -23,11 +23,14 @@ services:
     networks:
       - frontend
     restart: unless-stopped
+    depends_on:
+      - init-chown
     healthcheck:
-      test: [ "CMD", "wget", "--quiet", "--tries=1", "--timeout=3", "-O", "-", "http://127.0.0.1:80/" ]
+      test: [ "CMD-SHELL", "/usr/bin/wget --spider --quiet http://localhost:80/health || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s
 
   adguardhome:
     image: adguard/adguardhome:latest
@@ -52,6 +55,8 @@ services:
     networks:
       - frontend
     restart: unless-stopped
+    depends_on:
+      - init-chown
     # cap_add required for binding to privileged ports
     cap_add:
       - NET_ADMIN

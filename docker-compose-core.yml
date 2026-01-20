@@ -10,6 +10,7 @@ services:
       TZ: ${TZ}
       PUID: ${PUID}
       PGID: ${PGID}
+      HOMEPAGE_ALLOWED_HOSTS: ${DOMAIN},home.${DOMAIN}
     volumes:
       - ${VOLUMES_PATH}/homepage:/app/config
       # Optional: Docker socket for widget integration
@@ -17,6 +18,8 @@ services:
     networks:
       - frontend
     restart: unless-stopped
+    depends_on:
+      - init-chown
     healthcheck:
       test: [ "CMD", "wget", "--quiet", "--tries=1", "--timeout=3", "-O", "-", "http://127.0.0.1:3000/" ]
       interval: 30s
@@ -26,6 +29,7 @@ services:
   init-chown:
     image: alpine:latest
     container_name: init-chown
+    user: root
     labels:
       - 'wud.tag.include=latest'
       - 'wud.watch.digest=true'
