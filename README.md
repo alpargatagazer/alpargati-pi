@@ -6,15 +6,16 @@ Lightweight microservices orchestration for **Raspberry Pi 3B** using Docker Com
 
 This project deploys a set of personal productivity and security services on a Raspberry Pi 3B with Raspberry Pi OS Lite (64-bit):
 
-| Service | Description | Access |
-|----------|-------------|--------|
 | **Homepage** | Customizable dashboard | `http://pi.home` |
-| **Vaultwarden** | Password manager (Bitwarden compatible) | `http://vault.pi.home` |
-| **AdGuard Home** | DNS with ad blocking + local DNS | `http://adguard.pi.home` |
+| **Vaultwarden** | Password manager (HTTPS) | `https://vault.pi.home` |
+| **AdGuard Home** | DNS (Encrypted + LAN) | `http://adguard.pi.home` |
+| **SilverBullet** | Markdown Knowledge Base | `http://notes.pi.home` |
+| **Memos** | Lightweight Note-taking | `http://memos.pi.home` |
+| **Tailscale** | Mesh VPN & Remote Access | - |
 | **FileBrowser** | Web file manager | `http://files.pi.home` |
-| **Dozzle** | Real-time Docker log viewer | `http://logs.pi.home` |
+| **Dozzle** | Real-time Docker logs | `http://logs.pi.home` |
 | **WUD** | Container update manager | `http://wud.pi.home` |
-| **Caddy** | Reverse proxy (manages subdomains) | - |
+| **Caddy** | Reverse proxy | - |
 
 ## 🚀 Prerequisites
 
@@ -35,6 +36,10 @@ dockerd-rootless-setuptool.sh install
 
 # Restart session or run
 newgrp docker
+
+# Enable persistence (lingering) for Rootless Docker
+# Important: This ensures containers start automatically on boot
+sudo loginctl enable-linger $USER
 ```
 
 ### Swap Configuration (Recommended)
@@ -142,6 +147,26 @@ In your router's DHCP settings, set the **Pi IP address** as the primary DNS ser
 > [!NOTE]
 > After this, all devices on your network will resolve `*.pi.home` to the Pi, and Caddy will route them to the correct service.
 
+## 🛡️ Tailscale Configuration (Remote Access)
+
+Tailscale allows you to access your services securely from anywhere without opening ports on your router.
+
+1. **Get an Auth Key**:
+   - Log in to your [Tailscale Admin Console](https://login.tailscale.com/admin/settings/keys).
+   - Go to **Settings** → **Keys**.
+   - Generate a new **Auth Key**. (Recommended: "Ephemeral" and "Reusable" for this setup).
+2. **Configure `.env`**:
+   - Add the key to your `.env` file: `TS_AUTHKEY=tskey-auth-xxxxxx`
+   - Add your Tailscale domain: `TS_DOMAIN=alpargati-pi.yourname.ts.net`
+3. **Deploy**:
+   - Run `./bootstrap.sh`. The Pi will show up in your Tailscale machine list as `alpargati-pi`.
+4. **Access**:
+   - You can now access your Pi using its Tailscale IP or MagicDNS name from any device connected to your Tailnet.
+   - Example: `https://adguard.your-tailnet-name.ts.net`
+
+> [!IMPORTANT]
+> **HTTPS on Tailscale**: Caddy is configured with `tls internal` to provide HTTPS on `.ts.net` domains. Your browser will warn about a self-signed certificate unless you trust the Caddy Root CA or enable Tailscale's native HTTPS feature.
+
 ## 🎛️ Using the Bootstrap Script
 
 ```bash
@@ -194,59 +219,56 @@ alpargati-pi/
 ├── docker-compose-tools.yml        # FileBrowser, Dozzle, WUD
 ├── configs/
 │   ├── Caddyfile                   # Caddy template
-│   └── entrypoints/
-│       ├── caddy.sh
-│       ├── filebrowser.sh
-│       └── wud.sh
+│   ├── entrypoints/
+│   │   ├── caddy.sh
+│   │   ├── filebrowser.sh
+│   │   └── wud.sh
+│   └── homepage/                   # Homepage dashboard config
+│       ├── services.yaml
+│       ├── settings.yaml
+│       ├── widgets.yaml
+│       └── bookmarks.yaml
 └── README.md
 ```
 
 ## 🔧 Troubleshooting
-
-### Containers not starting
-```bash
-# View logs for all services
-docker compose -p alpargati-pi logs -f
-
-# View logs for a specific service
-docker compose -p alpargati-pi logs -f vaultwarden
-```
-
-### AdGuard cannot use port 53
-```bash
-# Check what process is using the port
-sudo lsof -i :53
-
-# If it's systemd-resolved, see "Free Port 53" section above
-```
-
-### Pi is running slowly
-```bash
-# Check memory usage
-free -h
-
-# Check active swap
-swapon --show
-
-# If swap is full, consider disabling optional services
-./bootstrap.sh --no-dozzle --no-filebrowser
-```
 
 ### Cannot access via domain name
 1. Verify AdGuard Home is set as the DNS on your router
 2. Check DNS Rewrites in AdGuard Home
 3. Test: `nslookup vault.pi.home <YOUR-PI-IP>`
 
+### Local domain (pi.home) not resolving
+If you can access services by IP but not by domain, ensure your devices are using the Pi as their DNS server.
+
+**IPv6 Interference (Common issue):**
+Modern OS (macOS, iOS, Android) prioritize IPv6 DNS. If your router announces an IPv6 DNS, your devices will ignore the Pi's IPv4 DNS.
+- **Fix**: Disable IPv6 (DHCPv6/RA Service) in your router settings, or set your network interface to "IPv4 Only" / "Link-local only" for IPv6.
+- **ZTE H3600 (Hyperoptic)**: Go to *Local Network* -> *LAN* -> *IPv6* and set *DHCPv6 Server* and *RA Service* to **Off**.
+
+### AdGuard Home showing only one client (172.18.0.1)
+In Rootless Docker, all inbound traffic goes through a proxy (RootlessKit/slirp4netns), which masks individual device IPs.
+- **Limitation**: Due to the way Rootless Docker handles networking namespaces, traditional "host mode" connectivity is restricted. For stability on the Pi 3B, AdGuard runs in Bridge mode, and transactions will appear as coming from the Docker gateway.
+
+### AdGuard Home Advanced Ports
+The following ports are exposed for encrypted DNS:
+- **853 (TCP/UDP)**: DNS-over-TLS (DoT) and DNS-over-QUIC (DoQ).
+- **5443 (TCP/UDP)**: DNSCrypt.
+- **784/8853 (UDP)**: Additional DoQ ports.
+
+### Dozzle Memory Consumption not showing
+On ARM devices, edit `/boot/firmware/cmdline.txt` and add:
+`cgroup_enable=cpuset cgroup_enable=memory cgroup_memory=1`
+Then reboot.
+
 ## 📝 Future Services
 
-These services are planned but not included by default (some may require more resources):
+These services are planned or viable but not included by default:
 
-- **Stirling-PDF**: PDF tools
-- **Tailscale**: Mesh VPN for remote access
-- **SilverBullet**: Lightweight Markdown Wiki/Notes (ideal for Pi)
-- **Memos**: Fast microblogging-style notes
+- **Stirling-PDF**: Comprehensive PDF manipulation tools.
+- **Navidrome**: Personal music streaming server (Subsonic compatible).
 
-> ⚠️ **Note**: Services like AFFiNE or Anytype are not viable on a Pi 3B due to >2GB RAM requirements and incompatible MongoDB versions.
+> ⚠️ **Note**: High-resource applications (like AFFiNE, Anytype, or Bitwarden Official) are NOT viable on a Pi 3B due to RAM and database constraints.
 
 ## 📄 License
 
