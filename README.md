@@ -32,7 +32,6 @@ sudo apt update && sudo apt upgrade -y
 # Install Docker
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER
-dockerd-rootless-setuptool.sh install
 
 # Restart session or run
 newgrp docker
@@ -164,8 +163,8 @@ Tailscale allows you to access your services securely from anywhere without open
    - You can now access your Pi using its Tailscale IP or MagicDNS name from any device connected to your Tailnet.
    - Example: `https://adguard.your-tailnet-name.ts.net`
 
-> [!IMPORTANT]
-> **HTTPS on Tailscale**: Caddy is configured with `tls internal` to provide HTTPS on `.ts.net` domains. Your browser will warn about a self-signed certificate unless you trust the Caddy Root CA or enable Tailscale's native HTTPS feature.
+> [!TIP]
+> **Standard Docker Advantage**: In Standard Docker mode, Tailscale and AdGuard Home use `network_mode: host`. This allows Tailscale to route traffic seamlessly and AdGuard to see the real IPs of every device in your home.
 
 ## 🎛️ Using the Bootstrap Script
 
@@ -231,6 +230,32 @@ alpargati-pi/
 └── README.md
 ```
 
+## 🔄 Migration from Rootless to Standard Docker
+
+If you previously set up the project in Rootless mode and want to switch to Standard Docker (recommended for better networking/Tailscale):
+
+### Step 1: Uninstall Rootless Docker
+```bash
+systemctl --user stop docker
+dockerd-rootless-setuptool.sh uninstall
+unset DOCKER_HOST
+```
+
+### Step 2: Install Standard Docker
+```bash
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+# Log out and log back in, or run:
+newgrp docker
+```
+
+### Step 3: Enable Standard Docker Service
+```bash
+sudo systemctl enable --now docker
+```
+
+---
+
 ## 🔧 Troubleshooting
 
 ### Cannot access via domain name
@@ -247,8 +272,12 @@ Modern OS (macOS, iOS, Android) prioritize IPv6 DNS. If your router announces an
 - **ZTE H3600 (Hyperoptic)**: Go to *Local Network* -> *LAN* -> *IPv6* and set *DHCPv6 Server* and *RA Service* to **Off**.
 
 ### AdGuard Home showing only one client (172.18.0.1)
-In Rootless Docker, all inbound traffic goes through a proxy (RootlessKit/slirp4netns), which masks individual device IPs.
-- **Limitation**: Due to the way Rootless Docker handles networking namespaces, traditional "host mode" connectivity is restricted. For stability on the Pi 3B, AdGuard runs in Bridge mode, and transactions will appear as coming from the Docker gateway.
+In Standard Docker, AdGuard Home runs in `network_mode: host`, which allows it to see the real IPs of your home devices.
+- **Fix**: Ensure you have successfully migrated to Standard Docker and the container is running in host mode.
+
+### Permission Denied (bootstrap.sh)
+If `bootstrap.sh` fails with "Permission denied" when writing homepage configurations:
+- **Fix**: I've updated the setup to render these files into a local directory (`configs/homepage/rendered`) which is then mounted into the container. Run `./bootstrap.sh` to apply this new logic.
 
 ### AdGuard Home Advanced Ports
 The following ports are exposed for encrypted DNS:

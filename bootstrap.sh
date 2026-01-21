@@ -258,12 +258,12 @@ export PUID PGID
 export CONTAINER_ENTRYPOINT_PATH="/entrypoint.sh"
 
 # Detect Docker socket
-# Prioritize Rootless sockets to ensure we use the user daemon if available
+# Prioritize standard socket for Standard Docker Mode
 POSSIBLE_SOCKETS=(
+  "/var/run/docker.sock"
   "/run/user/${PUID}/docker.sock"
   "${XDG_RUNTIME_DIR:-/run/user/${PUID}}/docker.sock"
   "$HOME/.docker/run/docker.sock"
-  "/var/run/docker.sock"
 )
 
 DOCKER_SOCKET_PATH=""
@@ -444,19 +444,18 @@ else
 fi
 
 ###############################################################################
-# Initialize Homepage Configuration
+# Initialize Homepage Configuration (Render locally, mounted by compose)
 ###############################################################################
-HOMEPAGE_VOL_DIR="${VOLUMES_PATH}/homepage"
+HOMEPAGE_RENDER_DIR="$SCRIPT_DIR/configs/homepage/rendered"
 HOMEPAGE_SRC_DIR="$SCRIPT_DIR/configs/homepage"
 
 if [[ -d "$HOMEPAGE_SRC_DIR" ]]; then
-  info "Initializing Homepage configuration in $HOMEPAGE_VOL_DIR..."
-  info "This will overwrite existing yaml files in the volume with templates from configs/homepage."
-  mkdir -p "$HOMEPAGE_VOL_DIR"
+  info "Rendering Homepage configuration in $HOMEPAGE_RENDER_DIR..."
+  mkdir -p "$HOMEPAGE_RENDER_DIR"
   
   for src_file in "$HOMEPAGE_SRC_DIR"/*.yaml; do
     filename=$(basename "$src_file")
-    dst_file="$HOMEPAGE_VOL_DIR/$filename"
+    dst_file="$HOMEPAGE_RENDER_DIR/$filename"
     
     # Render variables into the yaml files
     if ! expand_vars_file "$src_file" "$dst_file"; then
@@ -467,8 +466,8 @@ if [[ -d "$HOMEPAGE_SRC_DIR" ]]; then
   
   # Also copy icons if they exist
   if [[ -d "$HOMEPAGE_SRC_DIR/icons" ]]; then
-    mkdir -p "$HOMEPAGE_VOL_DIR/icons"
-    cp -a "$HOMEPAGE_SRC_DIR/icons/." "$HOMEPAGE_VOL_DIR/icons/"
+    mkdir -p "$HOMEPAGE_RENDER_DIR/icons"
+    cp -a "$HOMEPAGE_SRC_DIR/icons/." "$HOMEPAGE_RENDER_DIR/icons/"
   fi
 else
   warn "configs/homepage not found; skipping initialization. Ensure you configure it manually."

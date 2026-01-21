@@ -22,6 +22,9 @@ services:
       - ${VOLUMES_PATH}/vaultwarden:/data
     networks:
       - frontend
+    user: "${PUID}:${PGID}"
+    depends_on:
+      - init-chown
     restart: unless-stopped
     healthcheck:
       test: [ "CMD-SHELL", "/usr/bin/wget --spider --quiet http://localhost:80/health || exit 1" ]
@@ -41,25 +44,9 @@ services:
     volumes:
       - ${VOLUMES_PATH}/adguardhome/work:/opt/adguardhome/work
       - ${VOLUMES_PATH}/adguardhome/conf:/opt/adguardhome/conf
-    ports:
-      # DNS ports - must be exposed to the host for network DNS
-      - "53:53/tcp"
-      - "53:53/udp"
-      # Setup wizard and dashboard
-      - "3000:3000/tcp"
-      # DNS-over-TLS (DoT) and DNS-over-QUIC (DoQ)
-      - "853:853/tcp"
-      - "853:853/udp"
-      - "784:784/udp"
-      - "8853:8853/udp"
-      # DNSCrypt
-      - "5443:5443/tcp"
-      - "5443:5443/udp"
-      # DHCP (optional, uncomment if needed)
-      # - "67:67/udp"
-      # - "68:68/udp"
-    networks:
-      - frontend
+    network_mode: host
+    depends_on:
+      - init-chown
     restart: unless-stopped
     # cap_add required for binding to privileged ports
     cap_add:
@@ -77,6 +64,9 @@ services:
       - ${VOLUMES_PATH}/silverbullet:/space
     networks:
       - frontend
+    user: "${PUID}:${PGID}"
+    depends_on:
+      - init-chown
     restart: unless-stopped
 
   memos:
@@ -91,6 +81,9 @@ services:
       - ${VOLUMES_PATH}/memos:/var/opt/memos
     networks:
       - frontend
+    user: "${PUID}:${PGID}"
+    depends_on:
+      - init-chown
     restart: unless-stopped
 
 secrets:

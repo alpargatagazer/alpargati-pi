@@ -17,11 +17,15 @@ services:
     secrets:
       - filebrowser_admin_password
     volumes:
-      - ${VOLUMES_PATH}/filebrowser/database:/database:rw
-      - ${DATA_PATH:-/tmp/fake_data}:/srv:rw
+      - ${DATA_PATH}:/srv
+      - ${VOLUMES_PATH}/filebrowser/filebrowser.db:/database.db
+      - ${VOLUMES_PATH}/filebrowser/settings.json:/config/settings.json
       - ./configs/entrypoints/filebrowser.sh:${CONTAINER_ENTRYPOINT_PATH:-/entrypoint.sh}:ro
     networks:
       - frontend
+    user: "${PUID}:${PGID}"
+    depends_on:
+      - init-chown
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "wget", "--quiet", "--tries=1", "--timeout=3", "-O", "-", "http://127.0.0.1:8080/" ]

@@ -1,5 +1,17 @@
 services:
 
+  # One-shot container to fix volume permissions for the host user
+  init-chown:
+    image: busybox:latest
+    container_name: init-chown
+    user: root
+    command: >
+      sh -c "chown -R ${PUID}:${PGID} /data /volumes && chmod -R 775 /data /volumes"
+    volumes:
+      - ${DATA_PATH}:/data
+      - ${VOLUMES_PATH}:/volumes
+    restart: "no"
+
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
     container_name: homepage
@@ -11,8 +23,11 @@ services:
       PUID: ${PUID}
       PGID: ${PGID}
       HOMEPAGE_ALLOWED_HOSTS: ${DOMAIN},home.${DOMAIN}
+    user: "${PUID}:${PGID}"
+    depends_on:
+      - init-chown
     volumes:
-      - ${VOLUMES_PATH}/homepage:/app/config
+      - ./configs/homepage/rendered:/app/config
       # Optional: Docker socket for widget integration
       - ${DOCKER_SOCKET_PATH:-/var/run/docker.sock}:/var/run/docker.sock:ro
     networks:
@@ -42,8 +57,7 @@ services:
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
-    networks:
-      - frontend
+    network_mode: host
     restart: unless-stopped
 
 networks:
