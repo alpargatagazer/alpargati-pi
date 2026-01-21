@@ -163,6 +163,21 @@ Tailscale allows you to access your services securely from anywhere without open
    - You can now access your Pi using its Tailscale IP or MagicDNS name from any device connected to your Tailnet.
    - Example: `https://adguard.your-tailnet-name.ts.net`
 
+### 🌐 Accessing `pi.home` Remotely (Subnet Routing)
+If you want to use your local domains (`*.pi.home`) from your mobile device via Tailscale:
+
+1. **Update the configuration**:
+   - The project uses `TS_ROUTES=192.168.0.0/24` in `docker-compose-core.yml` for the `tailscale` service.
+2. **Deploy**:
+   - Run `./bootstrap.sh`. 
+3. **Approve the route** in the [Tailscale Admin Console](https://login.tailscale.com/admin/machines):
+   - Find `alpargati-pi` -> `...` (three dots) -> **Edit route settings**.
+   - Enable the `192.168.0.0/24` checkbox.
+3. **Configure DNS**:
+   - In Tailscale **DNS** settings, set your Pi's Tailscale IP as a **Global Nameserver** and enable **Override local DNS**.
+
+Now, when your phone asks for `adguard.pi.home`, AdGuard will return the local IP, and Tailscale will know how to route that traffic back to your house.
+
 > [!TIP]
 > **Standard Docker Advantage**: In Standard Docker mode, Tailscale and AdGuard Home use `network_mode: host`. This allows Tailscale to route traffic seamlessly and AdGuard to see the real IPs of every device in your home.
 

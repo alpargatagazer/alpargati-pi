@@ -51,6 +51,7 @@ services:
       - TS_STATE_DIR=/var/lib/tailscale
       - TS_HOSTNAME=alpargati-pi
       - TS_USERSPACE=false
+      - TS_ROUTES=192.168.0.0/24
     volumes:
       - ${VOLUMES_PATH}/tailscale:/var/lib/tailscale
       - /dev/net/tun:/dev/net/tun
