@@ -1,74 +1,73 @@
 ## Global options
 {
-    # Disable HTTPS auto-redirect for local development
-    auto_https off
+    # Enable automatic HTTPS but manage Tailscale specifically
 }
 
-# Snippet for internal access restriction (Local LAN + Tailscale)
+# Snippet for internal access restriction (Local LAN + Tailscale IPv4/IPv6)
 (internal_only) {
-    @not_internal not remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8 127.0.0.1/8 ::1 100.64.0.0/10
+    @not_internal not remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8 127.0.0.1/8 ::1 100.64.0.0/10 fd7a:115c:a1e0::/48
     respond @not_internal "Access denied" 403
 }
 
 # Main homepage
-http://{{DOMAIN}}, http://home.{{DOMAIN}}, http://pi.home, https://{{TS_DOMAIN}} {
+http://{{DOMAIN}}, http://home.{{DOMAIN}} {
     import internal_only
-    tls internal
     reverse_proxy homepage:3000
 }
 
-# Vaultwarden - Password Manager (protected by its own auth + Caddy basic auth)
-# Uses internal HTTPS to satisfy "Subtle Crypto" requirements
-https://vault.{{DOMAIN}}, https://vault.{{TS_DOMAIN}} {
+# Vaultwarden - Password Manager
+# Uses Valid HTTPS via Tailscale and HTTP for local access
+https://{{TS_DOMAIN}} {
     import internal_only
-    tls internal
-    basicauth {
+    tls {
+        get_certificate tailscale
+    }
+    basic_auth {
         {{CADDY_AUTH_USER}} {{CADDY_AUTH_PASSWORD_HASH}}
     }
     reverse_proxy vaultwarden:80
 }
 
-# AdGuard Home - DNS Admin Panel
-http://adguard.{{DOMAIN}}, https://adguard.{{TS_DOMAIN}} {
+http://vault.{{DOMAIN}} {
     import internal_only
-    tls internal
+    reverse_proxy vaultwarden:80
+}
+
+# AdGuard Home - DNS Admin Panel
+http://adguard.{{DOMAIN}} {
+    import internal_only
     reverse_proxy host.docker.internal:3000
 }
 
-# FileBrowser - File Manager (protected by its own auth + Caddy basic auth)
-http://files.{{DOMAIN}}, https://files.{{TS_DOMAIN}} {
+# FileBrowser
+http://files.{{DOMAIN}} {
     import internal_only
-    tls internal
     reverse_proxy filebrowser:8080
 }
 
-# Dozzle - Docker Log Viewer (protected by Caddy basic auth)
-http://logs.{{DOMAIN}}, https://logs.{{TS_DOMAIN}} {
+# Dozzle
+http://logs.{{DOMAIN}} {
     import internal_only
-    tls internal
-    basicauth {
+    basic_auth {
         {{CADDY_AUTH_USER}} {{CADDY_AUTH_PASSWORD_HASH}}
     }
     reverse_proxy dozzle:8080
 }
 
-# WUD - Container Update Manager (protected by its own auth)
-http://wud.{{DOMAIN}}, https://wud.{{TS_DOMAIN}} {
+# WUD
+http://wud.{{DOMAIN}} {
     import internal_only
-    tls internal
     reverse_proxy wud:2999
 }
 
-# SilverBullet - Knowledge Base
-http://notes.{{DOMAIN}}, https://notes.{{TS_DOMAIN}} {
+# SilverBullet
+http://notes.{{DOMAIN}} {
     import internal_only
-    tls internal
     reverse_proxy silverbullet:3000
 }
 
-# Memos - Lightweight Note-Taking
-http://memos.{{DOMAIN}}, https://memos.{{TS_DOMAIN}} {
+# Memos
+http://memos.{{DOMAIN}} {
     import internal_only
-    tls internal
     reverse_proxy memos:5230
 }

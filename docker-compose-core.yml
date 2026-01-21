@@ -52,8 +52,10 @@ services:
       - TS_HOSTNAME=alpargati-pi
       - TS_USERSPACE=false
       - TS_ROUTES=192.168.0.0/24
+      - TS_EXTRA_ARGS=--accept-routes
     volumes:
-      - ${VOLUMES_PATH}/tailscale:/var/lib/tailscale
+      - ${VOLUMES_PATH}/tailscale/data:/var/lib/tailscale
+      - ${VOLUMES_PATH}/tailscale/run:/tmp
       - /dev/net/tun:/dev/net/tun
     cap_add:
       - NET_ADMIN

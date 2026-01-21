@@ -286,13 +286,40 @@ Modern OS (macOS, iOS, Android) prioritize IPv6 DNS. If your router announces an
 - **Fix**: Disable IPv6 (DHCPv6/RA Service) in your router settings, or set your network interface to "IPv4 Only" / "Link-local only" for IPv6.
 - **ZTE H3600 (Hyperoptic)**: Go to *Local Network* -> *LAN* -> *IPv6* and set *DHCPv6 Server* and *RA Service* to **Off**.
 
+### Vaultwarden HTTPS (Secure Access)
+Vaultwarden requires HTTPS for many features to work correctly on mobile devices.
+- **Tailscale HTTPS**: The project uses Tailscale's native HTTPS integration with Caddy. Caddy communicates with the Tailscale socket to obtain valid Let's Encrypt certificates for your `*.ts.net` domain.
+- **Usage**: Access Vaultwarden at `https://[your-hostname].[your-tailnet].ts.net`.
+
+> [!IMPORTANT]
+> **AdGuard Warning**: Do NOT create DNS rewrites in AdGuard for your `*.ts.net` domain. Let Tailscale's MagicDNS handle it to ensure the SSL certificate matches the tunnel IP and remains valid.
+
 ### AdGuard Home showing only one client (172.18.0.1)
-In Standard Docker, AdGuard Home runs in `network_mode: host`, which allows it to see the real IPs of your home devices.
-- **Fix**: Ensure you have successfully migrated to Standard Docker and the container is running in host mode.
+In Standard Docker, AdGuard Home runs in `network_mode: host`, which allows it to see the real IPs of your devices.
+-   **Fix**: Ensure you have successfully migrated to Standard Docker and that the container is running in host mode.
 
 ### Permission Denied (bootstrap.sh)
 If `bootstrap.sh` fails with "Permission denied" when writing homepage configurations:
-- **Fix**: I've updated the setup to render these files into a local directory (`configs/homepage/rendered`) which is then mounted into the container. Run `./bootstrap.sh` to apply this new logic.
+- **Fix**: The script handles this by attempting to write locally first. Ensure you run the script with a user that has write permissions to the project directory.
+
+## Technical Lessons: Tailscale HTTPS Integration
+
+During this project, we implemented a robust way to get **real SSL certificates** on a local Raspberry Pi using Tailscale and Caddy.
+
+### 1. The Socket Sharing Challenge
+Caddy needs to talk to the `tailscaled.sock` to request certificates. Sharing this socket via Docker volumes is tricky because:
+- Tailscale often creates a **symbolic link** (`/var/run/tailscale/tailscaled.sock -> /tmp/tailscaled.sock`).
+- Symbolic links break across container boundaries if the target path is not mounted identically.
+- **Solution**: Mount the host directory to **both** `/var/run/tailscale` and `/tmp` in the Tailscale container. This ensures the link always points to a valid file on the shared volume.
+
+### 2. DNS Resolution (AdGuard vs. MagicDNS)
+- **Problem**: Manually pointing Tailscale domains to local IPs in AdGuard breaks SSL validation and tunnel connectivity.
+- **Solution**: Use Tailscale's **MagicDNS**. Caddy must resolve the `*.ts.net` domain to the Tailscale IP (`100.x.x.x`), not the LAN IP, for the certificate to be fetched and used correctly.
+
+### 3. IPv6 and Access Control
+- Tailscale often uses IPv6 for mobile devices.
+- **Lesson**: Always include the Tailscale IPv6 range (`fd7a:115c:a1e0::/48`) in your Caddy `internal_only` filters, or you will get "Access Denied" errors on your phone.
+ (`configs/homepage/rendered`) which is then mounted into the container. Run `./bootstrap.sh` to apply this new logic.
 
 ### AdGuard Home Advanced Ports
 The following ports are exposed for encrypted DNS:
