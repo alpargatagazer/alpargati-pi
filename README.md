@@ -12,7 +12,7 @@ This project deploys a set of personal productivity and security services on a R
 | **SilverBullet** | Markdown Knowledge Base | `http://notes.pi.home` |
 | **Memos** | Lightweight Note-taking | `http://memos.pi.home` |
 | **Tailscale** | Mesh VPN & Remote Access | - |
-| **FileBrowser** | Web file manager | `http://files.pi.home` |
+| **Syncthing** | Continuous File Sync | `http://syncthing.pi.home` |
 | **Dozzle** | Real-time Docker logs | `http://logs.pi.home` |
 | **WUD** | Container update manager | `http://wud.pi.home` |
 | **Caddy** | Reverse proxy | - |
@@ -193,8 +193,8 @@ Now, when your phone asks for `adguard.pi.home`, AdGuard will return the local I
 # Start without WUD
 ./bootstrap.sh --no-wud
 
-# Start without Dozzle or FileBrowser
-./bootstrap.sh --no-dozzle --no-filebrowser
+# Start without Dozzle or Syncthing
+./bootstrap.sh --no-dozzle --no-syncthing
 
 # View help
 ./bootstrap.sh --help
@@ -203,7 +203,7 @@ Now, when your phone asks for `adguard.pi.home`, AdGuard will return the local I
 ### Available Profiles
 - `--no-wud`: Disables the update manager
 - `--no-dozzle`: Disables the log viewer
-- `--no-filebrowser`: Disables the file manager
+- `--no-syncthing`: Disables the file synchronization service
 
 ## 🔐 Security
 
@@ -215,7 +215,7 @@ Sensitive services are protected by:
 ### Services protected by Caddy
 - Vaultwarden
 - AdGuard Home
-- FileBrowser
+- Syncthing
 - Dozzle
 
 ### Services with their own auth only
@@ -230,12 +230,12 @@ alpargati-pi/
 ├── docker-compose-core.yml         # Homepage, init-chown
 ├── docker-compose-network.yml      # Caddy
 ├── docker-compose-services.yml     # Vaultwarden, AdGuard Home
-├── docker-compose-tools.yml        # FileBrowser, Dozzle, WUD
+├── docker-compose-tools.yml        # Syncthing, Dozzle, WUD
 ├── configs/
 │   ├── Caddyfile                   # Caddy template
 │   ├── entrypoints/
 │   │   ├── caddy.sh
-│   │   ├── filebrowser.sh
+│   │   ├── syncthing.sh
 │   │   └── wud.sh
 │   └── homepage/                   # Homepage dashboard config
 │       ├── services.yaml

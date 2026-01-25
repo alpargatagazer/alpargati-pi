@@ -14,12 +14,12 @@
 #
 # Profiles (compose):
 #   By default the script will ENABLE all known profiles.
-#   Known profiles: "wud", "dozzle", "filebrowser"
+#   Known profiles: "wud", "dozzle", "syncthing"
 #
 #   You can selectively DISABLE any of those profiles using flags:
 #     --no-wud         : disable the "wud" profile
 #     --no-dozzle      : disable the "dozzle" profile
-#     --no-filebrowser : disable the "filebrowser" profile
+#     --no-syncthing   : disable the "syncthing" profile
 #
 # Examples:
 #   $(basename "$0")
@@ -106,12 +106,12 @@ MODE="up"
 # Profile enable flags (defaults: enabled)
 ENABLE_WUD=1
 ENABLE_DOZZLE=1
-ENABLE_FILEBROWSER=1
+ENABLE_SYNCTHING=1
 ENABLE_TAILSCALE=1
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [--down] [--no-wud] [--no-dozzle] [--no-filebrowser] [-h|--help]
+Usage: $(basename "$0") [--down] [--no-wud] [--no-dozzle] [--no-syncthing] [-h|--help]
 
 Modes:
   (default)         : bring services up (docker compose up -d)
@@ -120,7 +120,7 @@ Modes:
 Profile control (defaults: all enabled):
   --no-wud          : disable the "wud" profile
   --no-dozzle       : disable the "dozzle" profile
-  --no-filebrowser  : disable the "filebrowser" profile
+  --no-syncthing    : disable the "syncthing" profile
   --no-tailscale    : disable the "tailscale" profile
 
 Examples:
@@ -136,7 +136,7 @@ while (( "$#" )); do
     --down) MODE="down"; shift ;;
     --no-wud) ENABLE_WUD=0; shift ;;
     --no-dozzle) ENABLE_DOZZLE=0; shift ;;
-    --no-filebrowser) ENABLE_FILEBROWSER=0; shift ;;
+    --no-syncthing) ENABLE_SYNCTHING=0; shift ;;
     --no-tailscale) ENABLE_TAILSCALE=0; shift ;;
     -h|--help) usage; exit 0 ;;
     --) shift; break ;;
@@ -193,8 +193,8 @@ if [ -z "${WUD_ADMIN_USER:-}" ] || [ -z "${WUD_ADMIN_PASSWORD:-}" ] && [ $ENABLE
   warn "WUD_ADMIN_USER and WUD_ADMIN_PASSWORD should be set if WUD is enabled."
 fi
 
-if [ -z "${FILEBROWSER_ADMIN_USER:-}" ] || [ -z "${FILEBROWSER_ADMIN_PASSWORD:-}" ] && [ $ENABLE_FILEBROWSER -eq 1 ]; then
-  warn "FILEBROWSER_ADMIN_USER and FILEBROWSER_ADMIN_PASSWORD should be set if FileBrowser is enabled."
+if [ -z "${SYNCTHING_GUI_USER:-}" ] || [ -z "${SYNCTHING_GUI_PASSWORD:-}" ] && [ $ENABLE_SYNCTHING -eq 1 ]; then
+  warn "SYNCTHING_GUI_USER and SYNCTHING_GUI_PASSWORD should be set if Syncthing is enabled."
 fi
 
 ###############################################################################
@@ -212,7 +212,7 @@ echo "Script directory:           ${SCRIPT_DIR}"
 echo "Compose profiles (defaults: enabled):"
 printf "  - wud        : %s\n" "$( [[ $ENABLE_WUD -eq 1 ]] && echo "enabled" || echo "disabled" )"
 printf "  - dozzle     : %s\n" "$( [[ $ENABLE_DOZZLE -eq 1 ]] && echo "enabled" || echo "disabled" )"
-printf "  - filebrowser: %s\n" "$( [[ $ENABLE_FILEBROWSER -eq 1 ]] && echo "enabled" || echo "disabled" )"
+printf "  - syncthing  : %s\n" "$( [[ $ENABLE_SYNCTHING -eq 1 ]] && echo "enabled" || echo "disabled" )"
 printf "  - tailscale  : %s\n" "$( [[ $ENABLE_TAILSCALE -eq 1 ]] && echo "enabled" || echo "disabled" )"
 
 echo "=========================================="
@@ -298,8 +298,13 @@ info "Using DOCKER_HOST=${DOCKER_HOST}"
 generate_caddy_hash() {
   local user="$1"; local pass="$2"; local hash=""
 
-  if command -v docker >/dev/null 2>&1; then
-    if hash="$(docker run --rm caddy:2 caddy hash-password --plaintext "$pass" 2>/dev/null)"; then
+  # Fallback: htpasswd with -B (Bcrypt) - BEST LOCAL OPTION
+  if command -v htpasswd >/dev/null 2>&1; then
+    # Try generating with -n (stdout) and -b (batch), -B (bcrypt)
+    # Some versions of htpasswd don't support -B, check first
+    if htpasswd -nbB "test" "test" >/dev/null 2>&1; then
+      hash_line="$(htpasswd -nbB "$user" "$pass" 2>/dev/null || true)"
+      hash="${hash_line#*:}"
       if [[ -n "$hash" ]]; then
         echo "$hash"
         return 0
@@ -307,13 +312,13 @@ generate_caddy_hash() {
     fi
   fi
 
-  # Fallback: htpasswd with -B (Bcrypt)
-  if command -v htpasswd >/dev/null 2>&1; then
-    hash_line="$(htpasswd -nbB "$user" "$pass" 2>/dev/null || true)"
-    hash="${hash_line#*:}"
-    if [[ -n "$hash" ]]; then
-      echo "$hash"
-      return 0
+  # Docker fallback - SLOW on Raspberry Pi
+  if command -v docker >/dev/null 2>&1; then
+    if hash="$(docker run --rm caddy:2 caddy hash-password --plaintext "$pass" 2>/dev/null)"; then
+      if [[ -n "$hash" ]]; then
+        echo "$hash"
+        return 0
+      fi
     fi
   fi
 
@@ -324,6 +329,7 @@ generate_caddy_hash() {
 generate_wud_hash() {
   local user="$1"; local pass="$2"; local hash=""
 
+  # Local openssl - FASTest
   if command -v openssl >/dev/null 2>&1; then
     if hash="$(openssl passwd -apr1 "$pass" 2>/dev/null)"; then
       echo "$hash"
@@ -331,8 +337,9 @@ generate_wud_hash() {
     fi
   fi
 
+  # Local htpasswd
   if command -v htpasswd >/dev/null 2>&1; then
-    hash_line="$(htpasswd -nbB "$user" "$pass" 2>/dev/null || true)"
+    hash_line="$(htpasswd -nb "$user" "$pass" 2>/dev/null || true)"
     hash="${hash_line#*:}"
     if [[ -n "$hash" ]]; then
       echo "$hash"
@@ -345,24 +352,38 @@ generate_wud_hash() {
 
 # Create Caddy auth hash
 if [[ -n "${CADDY_AUTH_PASSWORD:-}" ]]; then
-  CADDY_AUTH_PASSWORD_HASH="$(generate_caddy_hash "$CADDY_AUTH_USER" "$CADDY_AUTH_PASSWORD" || true)"
-  if [[ -z "${CADDY_AUTH_PASSWORD_HASH:-}" ]]; then
-    err "Failed to generate bcrypt hash for CADDY_AUTH_PASSWORD. Ensure Docker or htpasswd is available."
-    exit 5
+  # Only generate if missing or secret file doesn't exist
+  if [[ ! -f "$SECRETS_PATH/caddy_auth_hash" ]]; then
+    CADDY_AUTH_PASSWORD_HASH="$(generate_caddy_hash "$CADDY_AUTH_USER" "$CADDY_AUTH_PASSWORD" || true)"
+    if [[ -z "${CADDY_AUTH_PASSWORD_HASH:-}" ]]; then
+      err "Failed to generate bcrypt hash for CADDY_AUTH_PASSWORD. Ensure Docker or htpasswd is available."
+      exit 5
+    fi
+    export CADDY_AUTH_PASSWORD_HASH
+    info "Generated CADDY_AUTH_PASSWORD_HASH (hidden)."
+  else
+    CADDY_AUTH_PASSWORD_HASH="$(cat "$SECRETS_PATH/caddy_auth_hash")"
+    export CADDY_AUTH_PASSWORD_HASH
+    info "Using existing CADDY_AUTH_PASSWORD_HASH."
   fi
-  export CADDY_AUTH_PASSWORD_HASH
-  info "Generated CADDY_AUTH_PASSWORD_HASH (hidden)."
 fi
 
 # Create WUD hash if enabled
 if [[ $ENABLE_WUD -eq 1 ]] && [[ -n "${WUD_ADMIN_PASSWORD:-}" ]]; then
-  WUD_ADMIN_PASSWORD_HASH="$(generate_wud_hash "$WUD_ADMIN_USER" "$WUD_ADMIN_PASSWORD" || true)"
-  if [[ -z "${WUD_ADMIN_PASSWORD_HASH:-}" ]]; then
-    err "Failed to generate hash for WUD_ADMIN_PASSWORD. Ensure openssl or htpasswd is available."
-    exit 5
+  # Only generate if missing
+  if [[ ! -f "$SECRETS_PATH/wud_admin_password_hash" ]]; then
+    WUD_ADMIN_PASSWORD_HASH="$(generate_wud_hash "$WUD_ADMIN_USER" "$WUD_ADMIN_PASSWORD" || true)"
+    if [[ -z "${WUD_ADMIN_PASSWORD_HASH:-}" ]]; then
+      err "Failed to generate hash for WUD_ADMIN_PASSWORD. Ensure openssl or htpasswd is available."
+      exit 5
+    fi
+    export WUD_ADMIN_PASSWORD_HASH
+    info "Generated WUD_ADMIN_PASSWORD_HASH (hidden)."
+  else
+    WUD_ADMIN_PASSWORD_HASH="$(cat "$SECRETS_PATH/wud_admin_password_hash")"
+    export WUD_ADMIN_PASSWORD_HASH
+    info "Using existing WUD_ADMIN_PASSWORD_HASH."
   fi
-  export WUD_ADMIN_PASSWORD_HASH
-  info "Generated WUD_ADMIN_PASSWORD_HASH (hidden)."
 fi
 
 ###############################################################################
@@ -377,9 +398,8 @@ write_secret() {
   info "  Created secret: $name"
 }
 
-write_secret "caddy_auth_password_hash" "${CADDY_AUTH_PASSWORD_HASH:-}"
 write_secret "vaultwarden_admin_token" "${VAULTWARDEN_ADMIN_TOKEN:-}"
-write_secret "filebrowser_admin_password" "${FILEBROWSER_ADMIN_PASSWORD:-}"
+write_secret "syncthing_gui_password" "${SYNCTHING_GUI_PASSWORD:-}"
 write_secret "wud_admin_password_hash" "${WUD_ADMIN_PASSWORD_HASH:-}"
 write_secret "ts_authkey" "${TS_AUTHKEY:-}"
 
@@ -529,8 +549,8 @@ if [[ $SUPPORTS_PROFILE -eq 1 ]]; then
   if [[ $ENABLE_DOZZLE -eq 1 ]]; then
     PROFILE_ARGS+=( --profile dozzle )
   fi
-  if [[ $ENABLE_FILEBROWSER -eq 1 ]]; then
-    PROFILE_ARGS+=( --profile filebrowser )
+  if [[ $ENABLE_SYNCTHING -eq 1 ]]; then
+    PROFILE_ARGS+=( --profile syncthing )
   fi
   if [[ $ENABLE_TAILSCALE -eq 1 ]]; then
     PROFILE_ARGS+=( --profile tailscale )
@@ -546,7 +566,7 @@ unset CADDY_AUTH_PASSWORD_HASH
 unset VAULTWARDEN_ADMIN_TOKEN
 unset WUD_ADMIN_PASSWORD
 unset WUD_ADMIN_PASSWORD_HASH
-unset FILEBROWSER_ADMIN_PASSWORD
+unset SYNCTHING_GUI_PASSWORD
 unset TS_AUTHKEY
 
 ###############################################################################

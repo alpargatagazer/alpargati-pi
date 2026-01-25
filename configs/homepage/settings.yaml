@@ -1,10 +1,11 @@
 title: Alpargati-Pi Dashboard
+headerStyle: clean
 base: http://home.{{DOMAIN}}
 background:
-  image: https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=2070
+  image: https://www.christies.com/img/LotImages/2011/NYR/2011_NYR_02470_0120_000(gregory_crewdson_untitled_from_twilight_1998062326).jpg?mode=max
   opacity: 50
-  blur: 5
-cardBlur: 10
+  blur: 0
+cardBlur: 5
 theme: dark
 fontFamily: Inter, sans-serif
 layout:

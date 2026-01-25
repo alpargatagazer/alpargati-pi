@@ -1,11 +1,4 @@
 - Documentation:
-    - Homepage Docs:
-        - icon: homepage.png
-          href: https://gethomepage.dev/
-    - Docker Hub:
-        - icon: docker.png
-          href: https://hub.docker.com/
-- Dev:
-    - Github:
+    - Alpargati-Pi Repo:
         - icon: github.png
-          href: https://github.com/
+          href: https://github.com/alpargatagazer/alpargati-pi

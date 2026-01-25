@@ -22,9 +22,6 @@ https://{{TS_DOMAIN}} {
     tls {
         get_certificate tailscale
     }
-    basic_auth {
-        {{CADDY_AUTH_USER}} {{CADDY_AUTH_PASSWORD_HASH}}
-    }
     reverse_proxy vaultwarden:80
 }
 
@@ -39,10 +36,10 @@ http://adguard.{{DOMAIN}} {
     reverse_proxy host.docker.internal:3000
 }
 
-# FileBrowser
-http://files.{{DOMAIN}} {
+# Syncthing
+http://sync.{{DOMAIN}} {
     import internal_only
-    reverse_proxy filebrowser:8080
+    reverse_proxy syncthing:8384
 }
 
 # Dozzle

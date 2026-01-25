@@ -1,36 +1,42 @@
 services:
 
-  filebrowser:
-    image: filebrowser/filebrowser:v2
-    profiles: [ "filebrowser" ]
-    container_name: filebrowser
+  syncthing:
+    image: syncthing/syncthing:2.0.13
+    profiles: [ "syncthing" ]
+    container_name: syncthing
+    hostname: syncthing
     labels:
-      - 'wud.tag.include=^v\d+$$'
+      - 'wud.tag.include=^\d+\.\d+\.\d+$$'
       - 'wud.watch.digest=true'
     entrypoint: [ "${CONTAINER_ENTRYPOINT_PATH:-/entrypoint.sh}" ]
     environment:
       TZ: ${TZ}
-      PUID: ${PUID}
-      PGID: ${PGID}
-      FILEBROWSER_ADMIN_USER: ${FILEBROWSER_ADMIN_USER}
-      # FILEBROWSER_ADMIN_PASSWORD is injected by entrypoint from secret
+      GUI_USER: ${SYNCTHING_GUI_USER}
+      # GUI_PASSWORD is injected by entrypoint from secret
+      VOLUMES_LABEL: "Microservices Volumes"
+      VOLUMES_PATH: "/srv/volumes"
+      SHARE_LABEL: "Public Share"
+      SHARE_PATH: "/srv/share"
     secrets:
-      - filebrowser_admin_password
+      - syncthing_gui_password
     volumes:
-      - ${DATA_PATH}:/srv
-      - ${VOLUMES_PATH}/filebrowser/filebrowser.db:/database.db
-      - ${VOLUMES_PATH}/filebrowser/settings.json:/config/settings.json
-      - ./configs/entrypoints/filebrowser.sh:${CONTAINER_ENTRYPOINT_PATH:-/entrypoint.sh}:ro
+      - ./configs/entrypoints/syncthing.sh:${CONTAINER_ENTRYPOINT_PATH:-/entrypoint.sh}:ro
+      - ${VOLUMES_PATH}/syncthing/config:/var/syncthing/config
+      - ${VOLUMES_PATH}:/srv/volumes
+      - ${DATA_PATH}/share:/srv/share
+    ports:
+      - "22050:22000/tcp"
+      - "22050:22000/udp"
+      - "21050:21027/udp"
     networks:
       - frontend
-    user: "${PUID}:${PGID}"
     depends_on:
       - init-chown
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "wget", "--quiet", "--tries=1", "--timeout=3", "-O", "-", "http://127.0.0.1:8080/" ]
-      interval: 1m
-      timeout: 10s
+      test: [ "CMD", "sh", "-c", "curl --fail -sS http://127.0.0.1:8384/rest/noauth/health >/dev/null || exit 1" ]
+      interval: 30s
+      timeout: 5s
       retries: 3
 
   dozzle:
@@ -101,8 +107,8 @@ services:
       retries: 3
 
 secrets:
-  filebrowser_admin_password:
-    file: ${SECRETS_PATH}/filebrowser_admin_password
+  syncthing_gui_password:
+    file: ${SECRETS_PATH}/syncthing_gui_password
   wud_admin_password_hash:
     file: ${SECRETS_PATH}/wud_admin_password_hash
 
