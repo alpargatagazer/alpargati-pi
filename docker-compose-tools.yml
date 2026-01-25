@@ -7,7 +7,6 @@ services:
     hostname: syncthing
     labels:
       - 'wud.tag.include=^\d+\.\d+\.\d+$$'
-      - 'wud.watch.digest=true'
     entrypoint: [ "${CONTAINER_ENTRYPOINT_PATH:-/entrypoint.sh}" ]
     environment:
       TZ: ${TZ}
@@ -40,16 +39,14 @@ services:
       retries: 3
 
   dozzle:
-    image: amir20/dozzle:latest
+    image: amir20/dozzle:v9.0.2
     profiles: [ "dozzle" ]
     container_name: dozzle
     labels:
-      - 'wud.tag.include=latest'
-      - 'wud.watch.digest=true'
+      - 'wud.tag.include=^v\d+\.\d+\.\d+$$'
     environment:
       TZ: ${TZ}
       DOZZLE_NO_ANALYTICS: "true"
-      # Dozzle uses /var/run/docker.sock by default
     volumes:
       - ${DOCKER_SOCKET_PATH}:/var/run/docker.sock:ro
     networks:

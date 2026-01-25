@@ -29,11 +29,10 @@ services:
     restart: "no"
 
   homepage:
-    image: ghcr.io/gethomepage/homepage:latest
+    image: ghcr.io/gethomepage/homepage:v1.9.0
     container_name: homepage
     labels:
-      - 'wud.tag.include=latest'
-      - 'wud.watch.digest=true'
+      - 'wud.tag.include=^v\d+\.\d+\.\d+$$'
     environment:
       TZ: ${TZ}
       PUID: ${PUID}
@@ -45,7 +44,7 @@ services:
     volumes:
       - ./configs/homepage/rendered:/app/config
       # Optional: Docker socket for widget integration
-      - ${DOCKER_SOCKET_PATH:-/var/run/docker.sock}:/var/run/docker.sock:ro
+      - ${DOCKER_SOCKET_PATH}:/var/run/docker.sock:ro
     networks:
       - frontend
     restart: unless-stopped
@@ -56,12 +55,11 @@ services:
       retries: 3
 
   tailscale:
-    image: tailscale/tailscale:latest
+    image: tailscale/tailscale:v1.92.5
     container_name: tailscale
     profiles: [ "tailscale" ]
     labels:
-      - 'wud.tag.include=latest'
-      - 'wud.watch.digest=true'
+      - 'wud.tag.include=^v\d+\.\d+\.\d+$$'
     environment:
       - TS_AUTHKEY=${TS_AUTHKEY}
       - TS_STATE_DIR=/var/lib/tailscale

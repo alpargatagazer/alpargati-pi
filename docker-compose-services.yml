@@ -1,11 +1,28 @@
 services:
 
+  adguardhome:
+    image: adguard/adguardhome:v0.107.71
+    container_name: adguardhome
+    labels:
+      - 'wud.tag.include=^v\d+\.\d+\.\d+$$'
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ${VOLUMES_PATH}/adguardhome/work:/opt/adguardhome/work
+      - ${VOLUMES_PATH}/adguardhome/conf:/opt/adguardhome/conf
+    network_mode: host
+    depends_on:
+      - init-chown
+    restart: unless-stopped
+    # cap_add required for binding to privileged ports
+    cap_add:
+      - NET_ADMIN
+
   vaultwarden:
-    image: vaultwarden/server:latest
+    image: vaultwarden/server:1.35.2
     container_name: vaultwarden
     labels:
-      - 'wud.tag.include=latest'
-      - 'wud.watch.digest=true'
+      - 'wud.tag.include=^\d+\.\d+\.\d+$$'
     environment:
       TZ: ${TZ}
       # Read admin token from secret file
@@ -26,38 +43,12 @@ services:
     depends_on:
       - init-chown
     restart: unless-stopped
-    healthcheck:
-      test: [ "CMD-SHELL", "/usr/bin/wget --spider --quiet http://localhost:80/health || exit 1" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
-  adguardhome:
-    image: adguard/adguardhome:latest
-    container_name: adguardhome
-    labels:
-      - 'wud.tag.include=latest'
-      - 'wud.watch.digest=true'
-    environment:
-      TZ: ${TZ}
-    volumes:
-      - ${VOLUMES_PATH}/adguardhome/work:/opt/adguardhome/work
-      - ${VOLUMES_PATH}/adguardhome/conf:/opt/adguardhome/conf
-    network_mode: host
-    depends_on:
-      - init-chown
-    restart: unless-stopped
-    # cap_add required for binding to privileged ports
-    cap_add:
-      - NET_ADMIN
 
   silverbullet:
-    image: zefhemel/silverbullet:latest
+    image: zefhemel/silverbullet:2.4.1
     container_name: silverbullet
     labels:
-      - 'wud.tag.include=latest'
-      - 'wud.watch.digest=true'
+      - 'wud.tag.include=^\d+\.\d+\.\d+$$'
     environment:
       TZ: ${TZ}
     volumes:
@@ -70,11 +61,10 @@ services:
     restart: unless-stopped
 
   memos:
-    image: neosmemo/memos:stable
+    image: neosmemo/memos:0.25.3
     container_name: memos
     labels:
-      - 'wud.tag.include=stable'
-      - 'wud.watch.digest=true'
+      - 'wud.tag.include=^\d+\.\d+\.\d+$$'
     environment:
       TZ: ${TZ}
     volumes:
