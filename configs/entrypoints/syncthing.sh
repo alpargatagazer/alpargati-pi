@@ -44,19 +44,28 @@ log() {
 setup_stignore() {
   local path="$1"
   local stignore_file="${path}/.stignore"
-  local pattern='(?d).DS_Store'
+  
+  # Standard ignore
+  local patterns="(?d).DS_Store"
 
-  if [ -f "$stignore_file" ]; then
-    if ! grep -Fqx "$pattern" "$stignore_file"; then
-      echo "$pattern" >> "$stignore_file"
-      chown "${PUID:-0}:${PGID:-0}" "$stignore_file" 2>/dev/null || true
-      log "Appended .DS_Store ignore pattern to $stignore_file"
-    fi
-  else
-    printf "%s\n" "$pattern" > "$stignore_file"
-    chown "${PUID:-0}:${PGID:-0}" "$stignore_file" 2>/dev/null || true
-    log "Created $stignore_file with .DS_Store ignore pattern"
+  # If this is the volumes path, ignore syncthing's own directory to prevent recursion
+  if [ "$path" = "$VOLUMES_PATH" ]; then
+    patterns="${patterns}
+syncthing/"
   fi
+
+  if [ ! -f "$stignore_file" ]; then
+    echo "$patterns" > "$stignore_file"
+    log "Created $stignore_file"
+  else
+    echo "$patterns" | while read -r line; do
+      if [ -n "$line" ] && ! grep -Fqx "$line" "$stignore_file"; then
+        echo "$line" >> "$stignore_file"
+      fi
+    done
+  fi
+  
+  chown "${PUID:-1000}:${PGID:-1000}" "$stignore_file" 2>/dev/null || true
 }
 
 # Add folder to Syncthing config if not present
