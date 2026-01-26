@@ -23,14 +23,9 @@ services:
       - ${VOLUMES_PATH}/syncthing/config:/var/syncthing/config
       - ${VOLUMES_PATH}:/srv/volumes
       - ${DATA_PATH}/share:/srv/share
-    ports:
-      - "22050:22000/tcp"
-      - "22050:22000/udp"
-      - "21050:21027/udp"
-    networks:
-      - frontend
     depends_on:
       - init-chown
+    network_mode: host
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "sh", "-c", "curl --fail -sS http://127.0.0.1:8384/rest/noauth/health >/dev/null || exit 1" ]

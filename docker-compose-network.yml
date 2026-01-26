@@ -23,6 +23,29 @@ services:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
+  tailscale:
+    image: tailscale/tailscale:v1.92.5
+    container_name: tailscale
+    profiles: [ "tailscale" ]
+    labels:
+      - 'wud.tag.include=^v\d+\.\d+\.\d+$$'
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_HOSTNAME=alpargati-pi
+      - TS_USERSPACE=false
+      - TS_ROUTES=192.168.0.0/24
+      - TS_EXTRA_ARGS=--accept-routes
+    volumes:
+      - ${VOLUMES_PATH}/tailscale/data:/var/lib/tailscale
+      - ${VOLUMES_PATH}/tailscale/run:/tmp
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - net_admin
+    network_mode: host
+    restart: unless-stopped
+
 secrets:
   caddy_auth_password_hash:
     file: ${SECRETS_PATH}/caddy_auth_password_hash

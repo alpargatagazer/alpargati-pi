@@ -21,6 +21,7 @@ services:
   vaultwarden:
     image: vaultwarden/server:1.35.2
     container_name: vaultwarden
+    user: "${PUID}:${PGID}"
     labels:
       - 'wud.tag.include=^\d+\.\d+\.\d+$$'
     environment:
@@ -39,7 +40,6 @@ services:
       - ${VOLUMES_PATH}/vaultwarden:/data
     networks:
       - frontend
-    user: "${PUID}:${PGID}"
     depends_on:
       - init-chown
     restart: unless-stopped
@@ -47,6 +47,7 @@ services:
   silverbullet:
     image: zefhemel/silverbullet:2.4.1
     container_name: silverbullet
+    user: "${PUID}:${PGID}"
     labels:
       - 'wud.tag.include=^\d+\.\d+\.\d+$$'
     environment:
@@ -55,7 +56,6 @@ services:
       - ${VOLUMES_PATH}/silverbullet:/space
     networks:
       - frontend
-    user: "${PUID}:${PGID}"
     depends_on:
       - init-chown
     restart: unless-stopped
@@ -63,6 +63,7 @@ services:
   memos:
     image: neosmemo/memos:0.25.3
     container_name: memos
+    user: "${PUID}:${PGID}"
     labels:
       - 'wud.tag.include=^\d+\.\d+\.\d+$$'
     environment:
@@ -71,7 +72,6 @@ services:
       - ${VOLUMES_PATH}/memos:/var/opt/memos
     networks:
       - frontend
-    user: "${PUID}:${PGID}"
     depends_on:
       - init-chown
     restart: unless-stopped

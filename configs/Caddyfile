@@ -39,7 +39,7 @@ http://adguard.{{DOMAIN}} {
 # Syncthing
 http://sync.{{DOMAIN}} {
     import internal_only
-    reverse_proxy syncthing:8384
+    reverse_proxy host.docker.internal:8384
 }
 
 # Dozzle

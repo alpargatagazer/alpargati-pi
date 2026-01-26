@@ -1,27 +1,26 @@
-- Network:
-    - AdGuard Home:
-        icon: mdi:shield-check
-        href: http://adguard.{{DOMAIN}}
-        description: Network-wide ads & trackers blocking
-
-    - Tailscale:
-        icon: mdi:vpn
-        href: https://login.tailscale.com/admin/machines
-        description: Secure VPN access
-
 - Applications:
     - Vaultwarden:
-        icon: mdi:safe
+        icon: vaultwarden-light
         href: https://vault.{{DOMAIN}}
         description: Secure Password Manager
 
+    - FreshRSS:
+        icon: freshrss
+        href: http://rss.{{DOMAIN}}
+        description: RSS reader
+        server: rpi-docker
+        container: freshrss
+        widget:
+            type: freshrss
+            url: http://rss.{{DOMAIN}}
+
     - SilverBullet:
-        icon: mdi:notebook-edit
+        icon: silverbullet
         href: http://notes.{{DOMAIN}}
         description: Extensible personal knowledge base
 
     - Memos:
-        icon: mdi:note-text
+        icon: memos
         href: http://memos.{{DOMAIN}}
         description: Lightweight note-taking
 
@@ -30,13 +29,49 @@
         icon: syncthing
         href: http://sync.{{DOMAIN}}
         description: Continuous File Synchronization
+        server: rpi-docker
+        container: syncthing
+        widget:
+            type: strelaysrv
+            url: 127.0.0.1:22070
 
     - Dozzle:
-        icon: mdi:docker
+        icon: dozzle
         href: http://logs.{{DOMAIN}}
         description: Real-time Docker logs viewer
 
-    - Watch Your Docker:
-        icon: mdi:update
+    - What's up Docker?:
+        icon: whats-up-docker
         href: http://wud.{{DOMAIN}}
         description: Container update monitoring
+        server: rpi-docker
+        container: wud
+        widget:
+            type: whatsupdocker
+            url: http://wud.{{DOMAIN}}
+            username: {{WUD_ADMIN_USER}}
+            password: {{WUD_ADMIN_PASSWORD_HASH}}
+
+- Network:
+    - AdGuard Home:
+        icon: adguard-home
+        href: http://adguard.{{DOMAIN}}
+        description: Network-wide ads & trackers blocking
+        server: rpi-docker
+        container: adguard
+        widget:
+            type: adguard
+            url: http://adguard.{{DOMAIN}}
+            username: {{ADGUARD_ADMIN_USER}}
+            password: {{ADGUARD_ADMIN_PASSWORD}}
+
+    - Tailscale:
+        icon: tailscale
+        href: https://login.tailscale.com/admin/machines
+        description: Secure VPN access
+        server: rpi-docker
+        container: tailscale
+        widget:
+            type: tailscale
+            deviceid: alpargati-pi
+            key: {{TS_AUTHKEY}}
