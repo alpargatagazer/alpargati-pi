@@ -425,15 +425,7 @@ expand_vars_file() {
   cp -a "$src" "$tmp"
 
   # Build sed arguments for placeholders
-  # Start with known placeholders
-  sed_args=()
-  sed_args+=( -e "s|<domain>|\\\${DOMAIN}|g" -e "s|{{DOMAIN}}|\\\${DOMAIN}|g" )
-  sed_args+=( -e "s|<ts_domain>|\\\${TS_DOMAIN}|g" -e "s|{{TS_DOMAIN}}|\\\${TS_DOMAIN}|g" )
-  sed_args+=( -e "s|<caddy_auth_user>|\\\${CADDY_AUTH_USER}|g" -e "s|{{CADDY_AUTH_USER}}|\\\${CADDY_AUTH_USER}|g" )
-  sed_args+=( -e "s|<caddy_auth_password_hash>|\\\${CADDY_AUTH_PASSWORD_HASH}|g" -e "s|{{CADDY_AUTH_PASSWORD_HASH}}|\\\${CADDY_AUTH_PASSWORD_HASH}|g" )
-
-  # Apply sed replacements in-place (create .bak then remove)
-  sed -i.bak "${sed_args[@]}" "$tmp" && rm -f "${tmp}.bak" || true
+  sed -i.bak -E 's/\{\{([A-Z0-9_]+)\}\}/\$\{\1\}/g' "$tmp" && rm -f "${tmp}.bak" || true
 
   if command -v envsubst >/dev/null 2>&1; then
     envsubst < "$tmp" > "$dst"
@@ -466,8 +458,8 @@ fi
 ###############################################################################
 # Initialize Homepage Configuration (Render locally, mounted by compose)
 ###############################################################################
-HOMEPAGE_RENDER_DIR="$SCRIPT_DIR/configs/homepage/rendered"
 HOMEPAGE_SRC_DIR="$SCRIPT_DIR/configs/homepage"
+HOMEPAGE_RENDER_DIR="$VOLUMES_PATH/homepage"
 
 if [[ -d "$HOMEPAGE_SRC_DIR" ]]; then
   info "Rendering Homepage configuration in $HOMEPAGE_RENDER_DIR..."

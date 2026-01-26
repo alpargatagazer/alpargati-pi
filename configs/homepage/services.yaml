@@ -3,6 +3,8 @@
         icon: vaultwarden-light
         href: https://vault.{{DOMAIN}}
         description: Secure Password Manager
+        server: rpi-docker
+        container: vaultwarden
 
     - FreshRSS:
         icon: freshrss
@@ -12,17 +14,21 @@
         container: freshrss
         widget:
             type: freshrss
-            url: http://rss.{{DOMAIN}}
+            url: http://rss:80
 
     - SilverBullet:
         icon: silverbullet
         href: http://notes.{{DOMAIN}}
         description: Extensible personal knowledge base
+        server: rpi-docker
+        container: silverbullet
 
     - Memos:
         icon: memos
         href: http://memos.{{DOMAIN}}
         description: Lightweight note-taking
+        server: rpi-docker
+        container: memos
 
 - Infrastructure:
     - Syncthing:
@@ -31,14 +37,13 @@
         description: Continuous File Synchronization
         server: rpi-docker
         container: syncthing
-        widget:
-            type: strelaysrv
-            url: 127.0.0.1:22070
 
     - Dozzle:
         icon: dozzle
         href: http://logs.{{DOMAIN}}
         description: Real-time Docker logs viewer
+        server: rpi-docker
+        container: dozzle
 
     - What's up Docker?:
         icon: whats-up-docker
@@ -48,7 +53,7 @@
         container: wud
         widget:
             type: whatsupdocker
-            url: http://wud.{{DOMAIN}}
+            url: http://wud:2999
             username: {{WUD_ADMIN_USER}}
             password: {{WUD_ADMIN_PASSWORD_HASH}}
 
@@ -58,10 +63,10 @@
         href: http://adguard.{{DOMAIN}}
         description: Network-wide ads & trackers blocking
         server: rpi-docker
-        container: adguard
+        container: adguardhome
         widget:
             type: adguard
-            url: http://adguard.{{DOMAIN}}
+            url: http://host.docker.internal:3000
             username: {{ADGUARD_ADMIN_USER}}
             password: {{ADGUARD_ADMIN_PASSWORD}}
 
@@ -74,4 +79,4 @@
         widget:
             type: tailscale
             deviceid: alpargati-pi
-            key: {{TS_AUTHKEY}}
+            key: {{TS_API_KEY}}

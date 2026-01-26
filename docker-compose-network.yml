@@ -23,6 +23,24 @@ services:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
+  adguardhome:
+    image: adguard/adguardhome:v0.107.71
+    container_name: adguardhome
+    labels:
+      - 'wud.tag.include=^v\d+\.\d+\.\d+$$'
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ${VOLUMES_PATH}/adguardhome/work:/opt/adguardhome/work
+      - ${VOLUMES_PATH}/adguardhome/conf:/opt/adguardhome/conf
+    network_mode: host
+    depends_on:
+      - init-chown
+    restart: unless-stopped
+    # cap_add required for binding to privileged ports
+    cap_add:
+      - NET_ADMIN
+
   tailscale:
     image: tailscale/tailscale:v1.92.5
     container_name: tailscale

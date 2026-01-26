@@ -35,17 +35,17 @@ services:
       - 'wud.tag.include=^v\d+\.\d+\.\d+$$'
     environment:
       TZ: ${TZ}
-      PUID: ${PUID}
-      PGID: ${PGID}
       HOMEPAGE_ALLOWED_HOSTS: ${DOMAIN},home.${DOMAIN}
     depends_on:
       - init-chown
     volumes:
-      - ./configs/homepage/rendered:/app/config
+      - ${VOLUMES_PATH}/homepage:/app/config
       # Optional: Docker socket for widget integration
       - ${DOCKER_SOCKET_PATH}:/var/run/docker.sock:ro
     networks:
       - frontend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "wget", "--quiet", "--tries=1", "--timeout=3", "-O", "-", "http://127.0.0.1:3000/" ]

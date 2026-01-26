@@ -207,19 +207,12 @@ Now, when your phone asks for `adguard.pi.home`, AdGuard will return the local I
 
 ## 🔐 Security
 
-### Dual-Layer Authentication
-Sensitive services are protected by:
-1. **Caddy Basic Auth**: First layer at the proxy (`CADDY_AUTH_USER`/`CADDY_AUTH_PASSWORD`)
-2. **Service Auth**: Each application's own second layer
 
 ### Services protected by Caddy
-- Vaultwarden
-- AdGuard Home
-- Syncthing
 - Dozzle
 
 ### Services with their own auth only
-- WUD (uses its own auth system)
+- The rest
 
 ## 📁 Project Structure
 
