@@ -1,44 +1,9 @@
 services:
 
-  syncthing:
-    image: syncthing/syncthing:2.0.13
-    profiles: [ "syncthing" ]
-    container_name: syncthing
-    hostname: syncthing
-    labels:
-      - 'wud.tag.include=^\d+\.\d+\.\d+$$'
-    entrypoint: [ "${CONTAINER_ENTRYPOINT_PATH:-/entrypoint.sh}" ]
-    environment:
-      TZ: ${TZ}
-      GUI_USER: ${SYNCTHING_GUI_USER}
-      # GUI_PASSWORD is injected by entrypoint from secret
-      VOLUMES_LABEL: "Microservices Volumes"
-      VOLUMES_PATH: "/srv/volumes"
-      SHARE_LABEL: "Public Share"
-      SHARE_PATH: "/srv/share"
-    secrets:
-      - syncthing_gui_password
-    volumes:
-      - ./configs/entrypoints/syncthing.sh:${CONTAINER_ENTRYPOINT_PATH:-/entrypoint.sh}:ro
-      - ${VOLUMES_PATH}/syncthing/config:/var/syncthing/config
-      - ${VOLUMES_PATH}:/srv/volumes
-      - ${DATA_PATH}/share:/srv/share
-    depends_on:
-      - init-chown
-    network_mode: host
-    restart: unless-stopped
-    healthcheck:
-      test: [ "CMD", "sh", "-c", "curl --fail -sS http://127.0.0.1:8384/rest/noauth/health >/dev/null || exit 1" ]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-
   dozzle:
-    image: amir20/dozzle:v9.0.2
+    image: amir20/dozzle:v10.4.1
     profiles: [ "dozzle" ]
     container_name: dozzle
-    labels:
-      - 'wud.tag.include=^v\d+\.\d+\.\d+$$'
     environment:
       TZ: ${TZ}
       DOZZLE_NO_ANALYTICS: "true"
@@ -53,56 +18,6 @@ services:
       timeout: 30s
       retries: 5
       start_period: 30s
-
-  wud:
-    image: getwud/wud:main
-    profiles: [ "wud" ]
-    container_name: wud
-    entrypoint: [ "${CONTAINER_ENTRYPOINT_PATH:-/entrypoint.sh}" ]
-    labels:
-      wud.watch: "false"
-    environment:
-      TZ: ${TZ}
-      WUD_SERVER_PORT: 2999
-      WUD_WATCHER_LOCAL_CRON: "0 6 * * *"
-      WUD_AUTH_BASIC_ADMIN_USER: ${WUD_ADMIN_USER}
-      # WUD_AUTH_BASIC_ADMIN_HASH is injected by entrypoint from secret
-      # Compose triggers
-      WUD_TRIGGER_DOCKERCOMPOSE_CORE_FILE: /wud/docker-compose-core.yml
-      WUD_TRIGGER_DOCKERCOMPOSE_CORE_PRUNE: "true"
-      WUD_TRIGGER_DOCKERCOMPOSE_CORE_AUTO: "false"
-      WUD_TRIGGER_DOCKERCOMPOSE_NETWORK_FILE: /wud/docker-compose-network.yml
-      WUD_TRIGGER_DOCKERCOMPOSE_NETWORK_PRUNE: "true"
-      WUD_TRIGGER_DOCKERCOMPOSE_NETWORK_AUTO: "false"
-      WUD_TRIGGER_DOCKERCOMPOSE_SERVICES_FILE: /wud/docker-compose-services.yml
-      WUD_TRIGGER_DOCKERCOMPOSE_SERVICES_PRUNE: "true"
-      WUD_TRIGGER_DOCKERCOMPOSE_SERVICES_AUTO: "false"
-      WUD_TRIGGER_DOCKERCOMPOSE_TOOLS_FILE: /wud/docker-compose-tools.yml
-      WUD_TRIGGER_DOCKERCOMPOSE_TOOLS_PRUNE: "true"
-      WUD_TRIGGER_DOCKERCOMPOSE_TOOLS_AUTO: "false"
-    secrets:
-      - wud_admin_password_hash
-    volumes:
-      - ${DOCKER_SOCKET_PATH}:/var/run/docker.sock
-      - ./docker-compose-core.yml:/wud/docker-compose-core.yml:ro
-      - ./docker-compose-network.yml:/wud/docker-compose-network.yml:ro
-      - ./docker-compose-services.yml:/wud/docker-compose-services.yml:ro
-      - ./docker-compose-tools.yml:/wud/docker-compose-tools.yml:ro
-      - ./configs/entrypoints/wud.sh:${CONTAINER_ENTRYPOINT_PATH:-/entrypoint.sh}:ro
-    networks:
-      - frontend
-    restart: unless-stopped
-    healthcheck:
-      test: curl --fail http://127.0.0.1:2999/health || exit 1
-      interval: 10s
-      timeout: 10s
-      retries: 3
-
-secrets:
-  syncthing_gui_password:
-    file: ${SECRETS_PATH}/syncthing_gui_password
-  wud_admin_password_hash:
-    file: ${SECRETS_PATH}/wud_admin_password_hash
 
 networks:
   frontend:

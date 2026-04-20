@@ -1,70 +1,56 @@
+## =============================================================================
+## Caddyfile - Reverse Proxy Configuration for alpargati-pi
+## =============================================================================
+## Organized by compose file sections:
+##   1. Global options & snippets
+##   2. Network services (docker-compose-network.yml)
+##   3. Application services (docker-compose-services.yml)
+##   4. Tool services (docker-compose-tools.yml)
+## =============================================================================
+
 ## Global options
 {
-    # Enable automatic HTTPS but manage Tailscale specifically
+    # Caddy global configuration
 }
 
-# Snippet for internal access restriction (Local LAN + Tailscale IPv4/IPv6)
+## Snippet for internal access restriction (Local LAN + Tailscale IPv4/IPv6)
 (internal_only) {
     @not_internal not remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8 127.0.0.1/8 ::1 100.64.0.0/10 fd7a:115c:a1e0::/48
     respond @not_internal "Access denied" 403
 }
 
-# Main homepage
-http://{{DOMAIN}}, http://home.{{DOMAIN}} {
-    import internal_only
-    reverse_proxy homepage:3000
-}
+## =============================================================================
+## NETWORK SERVICES (docker-compose-network.yml)
+## =============================================================================
 
-# Vaultwarden - Password Manager
-# Uses Valid HTTPS via Tailscale and HTTP for local access
-https://{{TS_DOMAIN}} {
-    import internal_only
-    tls {
-        get_certificate tailscale
-    }
-    reverse_proxy vaultwarden:80
-}
 
-http://vault.{{DOMAIN}} {
-    import internal_only
-    reverse_proxy vaultwarden:80
-}
+## =============================================================================
+## APPLICATION SERVICES (docker-compose-services.yml)
+## =============================================================================
 
-# AdGuard Home - DNS Admin Panel
+# AdGuard Home - DNS Admin Panel (network_mode: host)
 http://adguard.{{DOMAIN}} {
     import internal_only
     reverse_proxy host.docker.internal:3000
 }
 
-# Syncthing
-http://sync.{{DOMAIN}} {
+# FreshRSS - RSS Feed Aggregator
+http://rss.{{DOMAIN}} {
     import internal_only
-    reverse_proxy host.docker.internal:8384
+    reverse_proxy freshrss:80
 }
 
-# Dozzle
+## =============================================================================
+## TOOL SERVICES (docker-compose-tools.yml)
+## =============================================================================
+
+# Dozzle - Docker Logs Viewer (requires auth)
 http://logs.{{DOMAIN}} {
     import internal_only
     basic_auth {
         {{CADDY_AUTH_USER}} {{CADDY_AUTH_PASSWORD_HASH}}
     }
-    reverse_proxy dozzle:8080
-}
-
-# WUD
-http://wud.{{DOMAIN}} {
-    import internal_only
-    reverse_proxy wud:2999
-}
-
-# SilverBullet
-http://notes.{{DOMAIN}} {
-    import internal_only
-    reverse_proxy silverbullet:3000
-}
-
-# Memos
-http://memos.{{DOMAIN}} {
-    import internal_only
-    reverse_proxy memos:5230
+    reverse_proxy dozzle:8080 {
+        flush_interval -1
+    }
 }

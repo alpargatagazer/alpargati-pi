@@ -14,17 +14,15 @@
 #
 # Profiles (compose):
 #   By default the script will ENABLE all known profiles.
-#   Known profiles: "wud", "dozzle", "syncthing"
+#   Known profiles: "dozzle"
 #
 #   You can selectively DISABLE any of those profiles using flags:
-#     --no-wud         : disable the "wud" profile
 #     --no-dozzle      : disable the "dozzle" profile
-#     --no-syncthing   : disable the "syncthing" profile
 #
 # Examples:
 #   $(basename "$0")
 #   $(basename "$0") --down
-#   $(basename "$0") --no-wud --no-dozzle
+#   $(basename "$0") --no-dozzle
 #
 set -euo pipefail
 IFS=$'\n\t'
@@ -94,7 +92,7 @@ cleanup_secrets() {
 
 cleanup_all() {
   cleanup_tmpfiles
-  cleanup_secrets
+  #cleanup_secrets
 }
 trap cleanup_all EXIT
 
@@ -104,29 +102,25 @@ trap cleanup_all EXIT
 MODE="up"
 
 # Profile enable flags (defaults: enabled)
-ENABLE_WUD=1
 ENABLE_DOZZLE=1
-ENABLE_SYNCTHING=1
 ENABLE_TAILSCALE=1
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [--down] [--no-wud] [--no-dozzle] [--no-syncthing] [-h|--help]
+Usage: $(basename "$0") [--down] [--no-dozzle] [-h|--help]
 
 Modes:
   (default)         : bring services up (docker compose up -d)
   --down            : stop services (docker compose down)
 
 Profile control (defaults: all enabled):
-  --no-wud          : disable the "wud" profile
   --no-dozzle       : disable the "dozzle" profile
-  --no-syncthing    : disable the "syncthing" profile
   --no-tailscale    : disable the "tailscale" profile
 
 Examples:
   $(basename "$0")
   $(basename "$0") --down
-  $(basename "$0") --no-wud --no-dozzle
+  $(basename "$0") --no-dozzle
 EOF
 }
 
@@ -134,9 +128,7 @@ POSITIONAL=()
 while (( "$#" )); do
   case "$1" in
     --down) MODE="down"; shift ;;
-    --no-wud) ENABLE_WUD=0; shift ;;
     --no-dozzle) ENABLE_DOZZLE=0; shift ;;
-    --no-syncthing) ENABLE_SYNCTHING=0; shift ;;
     --no-tailscale) ENABLE_TAILSCALE=0; shift ;;
     -h|--help) usage; exit 0 ;;
     --) shift; break ;;
@@ -182,21 +174,6 @@ if [ -z "${TS_DOMAIN:-}" ] && [ $ENABLE_TAILSCALE -eq 1 ]; then
   warn "TS_DOMAIN not set. Tailscale URLs in Caddy might not work correctly."
 fi
 
-if [ -z "${VAULTWARDEN_ADMIN_TOKEN:-}" ]; then
-  warn "VAULTWARDEN_ADMIN_TOKEN is not set. Admin panel will be disabled."
-elif [[ ! "$VAULTWARDEN_ADMIN_TOKEN" =~ ^\$argon2id\$ ]]; then
-  warn "VAULTWARDEN_ADMIN_TOKEN is in plain text. Vaultwarden recommends Argon2 hashing."
-  info "You can generate a hash with: docker run --rm -it vaultwarden/server /vaultwarden hash"
-fi
-
-if [ -z "${WUD_ADMIN_USER:-}" ] || [ -z "${WUD_ADMIN_PASSWORD:-}" ] && [ $ENABLE_WUD -eq 1 ]; then
-  warn "WUD_ADMIN_USER and WUD_ADMIN_PASSWORD should be set if WUD is enabled."
-fi
-
-if [ -z "${SYNCTHING_GUI_USER:-}" ] || [ -z "${SYNCTHING_GUI_PASSWORD:-}" ] && [ $ENABLE_SYNCTHING -eq 1 ]; then
-  warn "SYNCTHING_GUI_USER and SYNCTHING_GUI_PASSWORD should be set if Syncthing is enabled."
-fi
-
 ###############################################################################
 # Show summary
 ###############################################################################
@@ -210,9 +187,7 @@ echo "Data path:                  ${DATA_PATH:-<not set>}"
 echo "Script directory:           ${SCRIPT_DIR}"
 
 echo "Compose profiles (defaults: enabled):"
-printf "  - wud        : %s\n" "$( [[ $ENABLE_WUD -eq 1 ]] && echo "enabled" || echo "disabled" )"
 printf "  - dozzle     : %s\n" "$( [[ $ENABLE_DOZZLE -eq 1 ]] && echo "enabled" || echo "disabled" )"
-printf "  - syncthing  : %s\n" "$( [[ $ENABLE_SYNCTHING -eq 1 ]] && echo "enabled" || echo "disabled" )"
 printf "  - tailscale  : %s\n" "$( [[ $ENABLE_TAILSCALE -eq 1 ]] && echo "enabled" || echo "disabled" )"
 
 echo "=========================================="
@@ -255,7 +230,6 @@ info "Secrets directory: $SECRETS_PATH"
 PUID="$(id -u)"
 PGID="$(id -g)"
 export PUID PGID
-export CONTAINER_ENTRYPOINT_PATH="/entrypoint.sh"
 
 # Detect Docker socket
 # Prioritize standard socket for Standard Docker Mode
@@ -325,31 +299,6 @@ generate_caddy_hash() {
   return 1
 }
 
-# Generate WUD hash (Apache MD5 for compatibility)
-generate_wud_hash() {
-  local user="$1"; local pass="$2"; local hash=""
-
-  # Local openssl - FASTest
-  if command -v openssl >/dev/null 2>&1; then
-    if hash="$(openssl passwd -apr1 "$pass" 2>/dev/null)"; then
-      echo "$hash"
-      return 0
-    fi
-  fi
-
-  # Local htpasswd
-  if command -v htpasswd >/dev/null 2>&1; then
-    hash_line="$(htpasswd -nb "$user" "$pass" 2>/dev/null || true)"
-    hash="${hash_line#*:}"
-    if [[ -n "$hash" ]]; then
-      echo "$hash"
-      return 0
-    fi
-  fi
-
-  return 1
-}
-
 # Create Caddy auth hash
 if [[ -n "${CADDY_AUTH_PASSWORD:-}" ]]; then
   # Only generate if missing or secret file doesn't exist
@@ -368,24 +317,6 @@ if [[ -n "${CADDY_AUTH_PASSWORD:-}" ]]; then
   fi
 fi
 
-# Create WUD hash if enabled
-if [[ $ENABLE_WUD -eq 1 ]] && [[ -n "${WUD_ADMIN_PASSWORD:-}" ]]; then
-  # Only generate if missing
-  if [[ ! -f "$SECRETS_PATH/wud_admin_password_hash" ]]; then
-    WUD_ADMIN_PASSWORD_HASH="$(generate_wud_hash "$WUD_ADMIN_USER" "$WUD_ADMIN_PASSWORD" || true)"
-    if [[ -z "${WUD_ADMIN_PASSWORD_HASH:-}" ]]; then
-      err "Failed to generate hash for WUD_ADMIN_PASSWORD. Ensure openssl or htpasswd is available."
-      exit 5
-    fi
-    export WUD_ADMIN_PASSWORD_HASH
-    info "Generated WUD_ADMIN_PASSWORD_HASH (hidden)."
-  else
-    WUD_ADMIN_PASSWORD_HASH="$(cat "$SECRETS_PATH/wud_admin_password_hash")"
-    export WUD_ADMIN_PASSWORD_HASH
-    info "Using existing WUD_ADMIN_PASSWORD_HASH."
-  fi
-fi
-
 ###############################################################################
 # Write secrets to files
 ###############################################################################
@@ -398,9 +329,6 @@ write_secret() {
   info "  Created secret: $name"
 }
 
-write_secret "vaultwarden_admin_token" "${VAULTWARDEN_ADMIN_TOKEN:-}"
-write_secret "syncthing_gui_password" "${SYNCTHING_GUI_PASSWORD:-}"
-write_secret "wud_admin_password_hash" "${WUD_ADMIN_PASSWORD_HASH:-}"
 write_secret "ts_authkey" "${TS_AUTHKEY:-}"
 
 info "All secret files generated."
@@ -456,33 +384,64 @@ else
 fi
 
 ###############################################################################
-# Initialize Homepage Configuration (Render locally, mounted by compose)
+# Initialize AdGuard Home Configuration (only if not exists)
 ###############################################################################
-HOMEPAGE_SRC_DIR="$SCRIPT_DIR/configs/homepage"
-HOMEPAGE_RENDER_DIR="$VOLUMES_PATH/homepage"
+ADGUARD_TEMPLATE="$SCRIPT_DIR/configs/AdGuardHome.template.yaml"
+ADGUARD_CONF_DIR="$VOLUMES_PATH/adguardhome/conf"
+ADGUARD_CONF="$ADGUARD_CONF_DIR/AdGuardHome.yaml"
 
-if [[ -d "$HOMEPAGE_SRC_DIR" ]]; then
-  info "Rendering Homepage configuration in $HOMEPAGE_RENDER_DIR..."
-  mkdir -p "$HOMEPAGE_RENDER_DIR"
-  
-  for src_file in "$HOMEPAGE_SRC_DIR"/*.yaml; do
-    filename=$(basename "$src_file")
-    dst_file="$HOMEPAGE_RENDER_DIR/$filename"
+if [[ -f "$ADGUARD_TEMPLATE" ]]; then
+  if [[ ! -f "$ADGUARD_CONF" ]]; then
+    info "Initializing AdGuard Home configuration..."
     
-    # Render variables into the yaml files
-    if ! expand_vars_file "$src_file" "$dst_file"; then
-      warn "Failed to render $filename; copying original as fallback"
-      cp -a "$src_file" "$dst_file"
+    # Detect eth0 IP address (primary network interface on Raspberry Pi)
+    ETH0_IP=""
+    if command -v ip >/dev/null 2>&1; then
+      ETH0_IP=$(ip -4 addr show eth0 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1 || true)
     fi
-  done
-  
-  # Also copy icons if they exist
-  if [[ -d "$HOMEPAGE_SRC_DIR/icons" ]]; then
-    mkdir -p "$HOMEPAGE_RENDER_DIR/icons"
-    cp -a "$HOMEPAGE_SRC_DIR/icons/." "$HOMEPAGE_RENDER_DIR/icons/"
+    if [[ -z "$ETH0_IP" ]]; then
+      # Fallback to hostname -I (first IP)
+      ETH0_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || true)
+    fi
+    if [[ -z "$ETH0_IP" ]]; then
+      warn "Could not detect IP address for AdGuard DNS rewrites. Using placeholder."
+      ETH0_IP="192.168.0.1"
+    fi
+    export ETH0_IP
+    info "Detected IP address for DNS rewrites: $ETH0_IP"
+    
+    # Generate bcrypt hash for AdGuard password
+    if [[ -n "${ADGUARD_ADMIN_PASSWORD:-}" ]]; then
+      ADGUARD_ADMIN_PASSWORD_HASH=""
+      if command -v htpasswd >/dev/null 2>&1; then
+        # htpasswd -B generates bcrypt hash
+        if htpasswd -nbB "" "$ADGUARD_ADMIN_PASSWORD" >/dev/null 2>&1; then
+          ADGUARD_ADMIN_PASSWORD_HASH=$(htpasswd -nbB "" "$ADGUARD_ADMIN_PASSWORD" 2>/dev/null | cut -d: -f2 || true)
+        fi
+      fi
+      if [[ -z "$ADGUARD_ADMIN_PASSWORD_HASH" ]] && command -v docker >/dev/null 2>&1; then
+        # Fallback to docker-based hash generation
+        ADGUARD_ADMIN_PASSWORD_HASH=$(docker run --rm caddy:2 caddy hash-password --plaintext "$ADGUARD_ADMIN_PASSWORD" 2>/dev/null || true)
+      fi
+      if [[ -z "$ADGUARD_ADMIN_PASSWORD_HASH" ]]; then
+        warn "Could not generate password hash for AdGuard. Manual setup required."
+        ADGUARD_ADMIN_PASSWORD_HASH=""
+      fi
+      export ADGUARD_ADMIN_PASSWORD_HASH
+    fi
+    
+    # Create config directory and render template
+    mkdir -p "$ADGUARD_CONF_DIR"
+    if expand_vars_file "$ADGUARD_TEMPLATE" "$ADGUARD_CONF"; then
+      info "AdGuard Home configuration created at $ADGUARD_CONF"
+    else
+      warn "Failed to render AdGuard Home configuration"
+    fi
+  else
+    info "AdGuard Home configuration already exists at $ADGUARD_CONF - skipping template"
   fi
 else
-  warn "configs/homepage not found; skipping initialization. Ensure you configure it manually."
+  info "AdGuard Home template not found; skipping auto-configuration."
 fi
 
 ###############################################################################
@@ -535,14 +494,8 @@ done
 ###############################################################################
 PROFILE_ARGS=()
 if [[ $SUPPORTS_PROFILE -eq 1 ]]; then
-  if [[ $ENABLE_WUD -eq 1 ]]; then
-    PROFILE_ARGS+=( --profile wud )
-  fi
   if [[ $ENABLE_DOZZLE -eq 1 ]]; then
     PROFILE_ARGS+=( --profile dozzle )
-  fi
-  if [[ $ENABLE_SYNCTHING -eq 1 ]]; then
-    PROFILE_ARGS+=( --profile syncthing )
   fi
   if [[ $ENABLE_TAILSCALE -eq 1 ]]; then
     PROFILE_ARGS+=( --profile tailscale )
@@ -555,11 +508,11 @@ fi
 info "Unsetting sensitive environment variables..."
 unset CADDY_AUTH_PASSWORD
 unset CADDY_AUTH_PASSWORD_HASH
-unset VAULTWARDEN_ADMIN_TOKEN
-unset WUD_ADMIN_PASSWORD
-unset WUD_ADMIN_PASSWORD_HASH
-unset SYNCTHING_GUI_PASSWORD
 unset TS_AUTHKEY
+unset TS_API_KEY
+unset TS_DEVICE_ID
+unset ADGUARD_ADMIN_PASSWORD
+unset ADGUARD_ADMIN_PASSWORD_HASH
 
 ###############################################################################
 # Run compose

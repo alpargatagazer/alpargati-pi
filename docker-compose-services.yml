@@ -1,66 +1,42 @@
 services:
 
-  vaultwarden:
-    image: vaultwarden/server:1.35.2
-    container_name: vaultwarden
-    user: "${PUID}:${PGID}"
-    labels:
-      - 'wud.tag.include=^\d+\.\d+\.\d+$$'
+  adguardhome:
+    image: adguard/adguardhome:v0.107.74
+    container_name: adguardhome
     environment:
       TZ: ${TZ}
-      # Read admin token from secret file
-      ADMIN_TOKEN_FILE: /run/secrets/vaultwarden_admin_token
-      # Security settings
-      SIGNUPS_ALLOWED: "false"
-      INVITATIONS_ALLOWED: "true"
-      SHOW_PASSWORD_HINT: "false"
-      # Websocket for live sync
-      WEBSOCKET_ENABLED: "true"
-    secrets:
-      - vaultwarden_admin_token
     volumes:
-      - ${VOLUMES_PATH}/vaultwarden:/data
+      - ${VOLUMES_PATH}/adguardhome/work:/opt/adguardhome/work
+      - ${VOLUMES_PATH}/adguardhome/conf:/opt/adguardhome/conf
+    network_mode: host
+    depends_on:
+      - init-chown
+    restart: unless-stopped
+    # cap_add required for binding to privileged ports
+    cap_add:
+      - NET_ADMIN
+
+  freshrss:
+    image: freshrss/freshrss:1.28.1-alpine
+    container_name: freshrss
+    # NOTE: FreshRSS must run as root for cron and timezone setup
+    environment:
+      TZ: ${TZ}
+      CRON_MIN: '3,33'
+      FRESHRSS_INSTALL: |-
+        --default-user ${FRESHRSS_USER:-admin}
+        --base-url http://rss.${DOMAIN}
+      FRESHRSS_USER: |-
+        --user ${FRESHRSS_USER:-admin}
+        --password ${FRESHRSS_PASSWORD}
+    volumes:
+      - ${VOLUMES_PATH}/freshrss/data:/var/www/FreshRSS/data
+      - ${VOLUMES_PATH}/freshrss/extensions:/var/www/FreshRSS/extensions
     networks:
       - frontend
     depends_on:
       - init-chown
     restart: unless-stopped
-
-  silverbullet:
-    image: zefhemel/silverbullet:2.4.1
-    container_name: silverbullet
-    user: "${PUID}:${PGID}"
-    labels:
-      - 'wud.tag.include=^\d+\.\d+\.\d+$$'
-    environment:
-      TZ: ${TZ}
-    volumes:
-      - ${VOLUMES_PATH}/silverbullet:/space
-    networks:
-      - frontend
-    depends_on:
-      - init-chown
-    restart: unless-stopped
-
-  memos:
-    image: neosmemo/memos:0.25.3
-    container_name: memos
-    user: "${PUID}:${PGID}"
-    labels:
-      - 'wud.tag.include=^\d+\.\d+\.\d+$$'
-    environment:
-      TZ: ${TZ}
-    volumes:
-      - ${VOLUMES_PATH}/memos:/var/opt/memos
-    networks:
-      - frontend
-    depends_on:
-      - init-chown
-    restart: unless-stopped
-
-secrets:
-  vaultwarden_admin_token:
-    file: ${SECRETS_PATH}/vaultwarden_admin_token
 
 networks:
   frontend:

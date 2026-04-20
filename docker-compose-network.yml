@@ -1,11 +1,8 @@
 services:
 
   caddy:
-    image: caddy:2.11
+    image: caddy:2.11.2
     container_name: caddy
-    labels:
-      - 'wud.tag.include=^\d+\.\d+$$'
-      - 'wud.watch.digest=true'
     environment:
       TZ: ${TZ}
     volumes:
@@ -13,7 +10,6 @@ services:
       - ${VOLUMES_PATH}/caddy/data:/data
       - ${VOLUMES_PATH}/caddy/config:/config
       - ${VOLUMES_PATH}/tailscale/run:/var/run/tailscale:ro
-      - ./configs/entrypoints/caddy.sh:${CONTAINER_ENTRYPOINT_PATH:-/entrypoint.sh}:ro
     ports:
       - "80:80"
       - "443:443"
@@ -23,30 +19,10 @@ services:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
-  adguardhome:
-    image: adguard/adguardhome:v0.107.71
-    container_name: adguardhome
-    labels:
-      - 'wud.tag.include=^v\d+\.\d+\.\d+$$'
-    environment:
-      TZ: ${TZ}
-    volumes:
-      - ${VOLUMES_PATH}/adguardhome/work:/opt/adguardhome/work
-      - ${VOLUMES_PATH}/adguardhome/conf:/opt/adguardhome/conf
-    network_mode: host
-    depends_on:
-      - init-chown
-    restart: unless-stopped
-    # cap_add required for binding to privileged ports
-    cap_add:
-      - NET_ADMIN
-
   tailscale:
-    image: tailscale/tailscale:v1.92.5
+    image: tailscale/tailscale:v1.96.5
     container_name: tailscale
     profiles: [ "tailscale" ]
-    labels:
-      - 'wud.tag.include=^v\d+\.\d+\.\d+$$'
     environment:
       - TS_AUTHKEY=${TS_AUTHKEY}
       - TS_STATE_DIR=/var/lib/tailscale
@@ -63,10 +39,6 @@ services:
       - net_admin
     network_mode: host
     restart: unless-stopped
-
-secrets:
-  caddy_auth_password_hash:
-    file: ${SECRETS_PATH}/caddy_auth_password_hash
 
 networks:
   frontend:

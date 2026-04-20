@@ -4,9 +4,6 @@ services:
   init-chown:
     image: alpine:latest
     container_name: init-chown
-    labels:
-      - 'wud.tag.include=latest'
-      - 'wud.watch.digest=true'
     # run as root (default) and perform a safe chown only when /volumes and /music exists
     command: >
       sh -euxc '
@@ -27,31 +24,6 @@ services:
       - ${VOLUMES_PATH}:/volumes:rw
       - ${DATA_PATH}:/data:rw
     restart: "no"
-
-  homepage:
-    image: ghcr.io/gethomepage/homepage:v1.9.0
-    container_name: homepage
-    labels:
-      - 'wud.tag.include=^v\d+\.\d+\.\d+$$'
-    environment:
-      TZ: ${TZ}
-      HOMEPAGE_ALLOWED_HOSTS: ${DOMAIN},home.${DOMAIN}
-    depends_on:
-      - init-chown
-    volumes:
-      - ${VOLUMES_PATH}/homepage:/app/config
-      # Optional: Docker socket for widget integration
-      - ${DOCKER_SOCKET_PATH}:/var/run/docker.sock:ro
-    networks:
-      - frontend
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    restart: unless-stopped
-    healthcheck:
-      test: [ "CMD", "wget", "--quiet", "--tries=1", "--timeout=3", "-O", "-", "http://127.0.0.1:3000/" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
 networks:
   frontend:
