@@ -183,7 +183,6 @@ echo "Timezone:                   ${TZ:-<not set>}"
 echo "Mode:                       ${MODE}"
 echo "Domain:                     ${DOMAIN}"
 echo "Volumes path:               ${VOLUMES_PATH}"
-echo "Data path:                  ${DATA_PATH:-<not set>}"
 echo "Script directory:           ${SCRIPT_DIR}"
 
 echo "Compose profiles (defaults: enabled):"
@@ -205,15 +204,6 @@ if [[ ! -d "$VOLUMES_PATH" ]]; then
   fi
 else
   info "Volumes directory exists: $VOLUMES_PATH"
-fi
-
-if [[ -n "${DATA_PATH:-}" ]] && [[ ! -d "$DATA_PATH" ]]; then
-  warn "Data directory does not exist; creating: $DATA_PATH"
-  if ! mkdir -p "$DATA_PATH" 2>/dev/null; then
-    err "Could not create Data directory: $DATA_PATH"
-    echo "Please run: sudo mkdir -p $DATA_PATH && sudo chown -R $(id -u):$(id -g) $(dirname "$DATA_PATH")"
-    exit 4
-  fi
 fi
 
 ###############################################################################

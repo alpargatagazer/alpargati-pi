@@ -22,7 +22,6 @@ services:
       '
     volumes:
       - ${VOLUMES_PATH}:/volumes:rw
-      - ${DATA_PATH}:/data:rw
     restart: "no"
 
 networks:
