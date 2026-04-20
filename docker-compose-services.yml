@@ -1,0 +1,43 @@
+services:
+
+  adguardhome:
+    image: adguard/adguardhome:v0.107.74
+    container_name: adguardhome
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ${VOLUMES_PATH}/adguardhome/work:/opt/adguardhome/work
+      - ${VOLUMES_PATH}/adguardhome/conf:/opt/adguardhome/conf
+    network_mode: host
+    depends_on:
+      - init-chown
+    restart: unless-stopped
+    # cap_add required for binding to privileged ports
+    cap_add:
+      - NET_ADMIN
+
+  freshrss:
+    image: freshrss/freshrss:1.28.1-alpine
+    container_name: freshrss
+    # NOTE: FreshRSS must run as root for cron and timezone setup
+    environment:
+      TZ: ${TZ}
+      CRON_MIN: '3,33'
+      FRESHRSS_INSTALL: |-
+        --default-user ${FRESHRSS_USER:-admin}
+        --base-url http://rss.${DOMAIN}
+      FRESHRSS_USER: |-
+        --user ${FRESHRSS_USER:-admin}
+        --password ${FRESHRSS_PASSWORD}
+    volumes:
+      - ${VOLUMES_PATH}/freshrss/data:/var/www/FreshRSS/data
+      - ${VOLUMES_PATH}/freshrss/extensions:/var/www/FreshRSS/extensions
+    networks:
+      - frontend
+    depends_on:
+      - init-chown
+    restart: unless-stopped
+
+networks:
+  frontend:
+    name: alpargati-pi_frontend

@@ -1,0 +1,29 @@
+services:
+
+  # One-shot container to fix volume permissions for the host user
+  init-chown:
+    image: alpine:latest
+    container_name: init-chown
+    # run as root (default) and perform a safe chown only when /volumes and /music exists
+    command: >
+      sh -euxc '
+        if [ -d /volumes ]; then
+          echo "Init: fixing ownership of /volumes to ${PUID:-1000}:${PGID:-1000}";
+          chown -R ${PUID:-1000}:${PGID:-1000} /volumes || true;
+        else
+          echo "Init: /volumes not found, skipping";
+        fi
+        if [ -d /data ]; then
+          echo "Init: fixing ownership of /data to ${PUID:-1000}:${PGID:-1000}";
+          chown -R ${PUID:-1000}:${PGID:-1000} /data || true;
+        else
+          echo "Init: /data not found, skipping";
+        fi
+      '
+    volumes:
+      - ${VOLUMES_PATH}:/volumes:rw
+    restart: "no"
+
+networks:
+  frontend:
+    name: alpargati-pi_frontend

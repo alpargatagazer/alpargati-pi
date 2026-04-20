@@ -1,0 +1,24 @@
+services:
+
+  dozzle:
+    image: amir20/dozzle:v10.4.1
+    profiles: [ "dozzle" ]
+    container_name: dozzle
+    environment:
+      TZ: ${TZ}
+      DOZZLE_NO_ANALYTICS: "true"
+    volumes:
+      - ${DOCKER_SOCKET_PATH}:/var/run/docker.sock:ro
+    networks:
+      - frontend
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "/dozzle", "healthcheck" ]
+      interval: 3s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+
+networks:
+  frontend:
+    name: alpargati-pi_frontend

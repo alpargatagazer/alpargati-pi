@@ -1,0 +1,45 @@
+services:
+
+  caddy:
+    image: caddy:2.11.2
+    container_name: caddy
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ./configs/Caddyfile.custom:/etc/caddy/Caddyfile:ro
+      - ${VOLUMES_PATH}/caddy/data:/data
+      - ${VOLUMES_PATH}/caddy/config:/config
+      - ${VOLUMES_PATH}/tailscale/run:/var/run/tailscale:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - frontend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  tailscale:
+    image: tailscale/tailscale:v1.96.5
+    container_name: tailscale
+    profiles: [ "tailscale" ]
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_HOSTNAME=alpargati-pi
+      - TS_USERSPACE=false
+      - TS_ROUTES=192.168.0.0/24
+      - TS_EXTRA_ARGS=--accept-routes
+    volumes:
+      - ${VOLUMES_PATH}/tailscale/data:/var/lib/tailscale
+      - ${VOLUMES_PATH}/tailscale/run:/tmp
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - net_admin
+    network_mode: host
+    restart: unless-stopped
+
+networks:
+  frontend:
+    name: alpargati-pi_frontend
