@@ -32,6 +32,7 @@ services:
       - TS_EXTRA_ARGS=--accept-routes
     volumes:
       - ${VOLUMES_PATH}/tailscale/data:/var/lib/tailscale
+      - ${VOLUMES_PATH}/tailscale/run:/var/run/tailscale
       - ${VOLUMES_PATH}/tailscale/run:/tmp
     devices:
       - /dev/net/tun:/dev/net/tun

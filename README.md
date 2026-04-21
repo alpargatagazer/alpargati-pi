@@ -9,7 +9,7 @@ This project deploys a set of personal productivity and security services on a R
 | Service | Description | URL |
 |---------|-------------|-----|
 | **AdGuard Home** | DNS (Encrypted + LAN) | `http://adguard.pi.home` |
-| **FreshRSS** | RSS Feed Aggregator | `http://rss.pi.home` |
+| **FreshRSS** | RSS Feed Aggregator | `http://rss.pi.home` or HTTPS via Tailscale |
 | **Dozzle** | Real-time Docker logs | `http://logs.pi.home` |
 | **Caddy** | Reverse proxy | - |
 | **Tailscale** | Mesh VPN & Remote Access | - |
@@ -208,7 +208,7 @@ Now, when your phone asks for `adguard.pi.home`, AdGuard will return the local I
 
 ## 📰 FreshRSS
 
-FreshRSS is a self-hosted RSS feed aggregator. Access it at `http://rss.pi.home`.
+FreshRSS is a self-hosted RSS feed aggregator. Access it at `http://rss.pi.home` (Local) or securely via Tailscale HTTPS.
 
 ### First-time Setup
 The first time you access FreshRSS, a user will be automatically created using the credentials in your `.env` file:
