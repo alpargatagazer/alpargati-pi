@@ -34,8 +34,8 @@ http://adguard.{{DOMAIN}} {
     reverse_proxy host.docker.internal:3000
 }
 
-# FreshRSS - RSS Feed Aggregator
-http://rss.{{DOMAIN}} {
+# FreshRSS - RSS Feed Aggregator (Local & Tailscale HTTPS)
+http://rss.{{DOMAIN}}, https://{{TS_DOMAIN}} {
     import internal_only
     reverse_proxy freshrss:80
 }
